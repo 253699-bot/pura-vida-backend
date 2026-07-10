@@ -17,6 +17,11 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public Optional<User> findById(Integer id) {
+        return userJpaRepository.findById(id).map(UserEntity::toDomain);
+    }
+
+    @Override
     public Optional<User> findByCorreo(String correo) {
         return userJpaRepository.findByCorreo(correo).map(UserEntity::toDomain);
     }

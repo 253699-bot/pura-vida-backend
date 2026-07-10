@@ -1,7 +1,13 @@
 package com.puravida.modules.auth.infrastructure.security;
 
+import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.auth.application.port.out.JwtTokenPort;
+import com.puravida.modules.auth.application.port.out.JwtTokenReaderPort;
 import com.puravida.modules.users.domain.model.User;
+import com.puravida.modules.users.domain.model.UserRole;
+import com.puravida.shared.domain.exception.UnauthorizedException;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JwtTokenProvider implements JwtTokenPort {
+public class JwtTokenProvider implements JwtTokenPort, JwtTokenReaderPort {
 
     private final SecretKey signingKey;
     private final long expirationMinutes;
@@ -45,5 +51,40 @@ public class JwtTokenProvider implements JwtTokenPort {
     @Override
     public long expirationMinutes() {
         return expirationMinutes;
+    }
+
+    @Override
+    public AuthenticatedUser read(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(signingKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            return new AuthenticatedUser(
+                    integerClaim(claims.get("userId")),
+                    claims.get("correo", String.class),
+                    UserRole.fromDatabaseValue(claims.get("rol", String.class))
+            );
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new UnauthorizedException("Token de autenticacion invalido.");
+        }
+    }
+
+    private Integer integerClaim(Object value) {
+        if (value instanceof Integer integerValue) {
+            return integerValue;
+        }
+
+        if (value instanceof Number numberValue) {
+            return numberValue.intValue();
+        }
+
+        if (value instanceof String stringValue) {
+            return Integer.valueOf(stringValue);
+        }
+
+        throw new IllegalArgumentException("Claim numerico invalido.");
     }
 }

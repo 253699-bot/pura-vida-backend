@@ -3,7 +3,9 @@ package com.puravida.shared.web;
 import com.puravida.modules.auth.domain.exception.EmailAlreadyRegisteredException;
 import com.puravida.modules.auth.domain.exception.InactiveUserException;
 import com.puravida.modules.auth.domain.exception.InvalidCredentialsException;
+import com.puravida.shared.domain.exception.ForbiddenException;
 import com.puravida.shared.domain.exception.PuraVidaException;
+import com.puravida.shared.domain.exception.UnauthorizedException;
 import com.puravida.shared.web.response.ErrorResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,6 +40,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InactiveUserException.class)
     public ResponseEntity<ErrorResponse> handleInactiveUser(InactiveUserException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorResponse.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(exception.getMessage()));
     }
 
