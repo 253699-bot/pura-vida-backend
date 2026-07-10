@@ -3,12 +3,15 @@ package com.puravida.shared.web;
 import com.puravida.modules.auth.domain.exception.EmailAlreadyRegisteredException;
 import com.puravida.modules.auth.domain.exception.InactiveUserException;
 import com.puravida.modules.auth.domain.exception.InvalidCredentialsException;
+import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.ForbiddenException;
+import com.puravida.shared.domain.exception.NotFoundException;
 import com.puravida.shared.domain.exception.PuraVidaException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
 import com.puravida.shared.web.response.ErrorResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -51,6 +54,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of("No se puede completar la operacion por restricciones de integridad."));
     }
 
     @ExceptionHandler(PuraVidaException.class)
