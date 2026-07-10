@@ -1,4 +1,6 @@
 target/
+*.jar
+*.war
 
 .idea/
 .vscode/
@@ -7,6 +9,17 @@ target/
 .env
 .env.*
 !.env.example
+
+# Secrets, keys and local cloud credentials
+*.pem
+*.key
+*.p12
+*.jks
+.aws/
+aws-credentials
+credentials
+secrets
+*.secret
 
 logs/
 *.log
@@ -17,3 +30,7 @@ temp/
 
 .DS_Store
 Thumbs.db
+
+# Generated frontend artifacts
+node_modules/
+dist/

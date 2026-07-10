@@ -1,0 +1,18 @@
+[Unit]
+Description=PuraVida Backend API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=puravida
+Group=puravida
+WorkingDirectory=/opt/puravida-api
+EnvironmentFile=/etc/puravida-api/puravida-api.env
+ExecStart=/usr/bin/java -jar /opt/puravida-api/pura-vida-backend.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
