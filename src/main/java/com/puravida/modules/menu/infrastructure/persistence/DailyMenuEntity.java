@@ -79,6 +79,10 @@ public class DailyMenuEntity {
         return dishId;
     }
 
+    public BigDecimal precioDia() {
+        return precioDia;
+    }
+
     public DailyMenuItem toDomain(Dish dish, MenuAvailability availability) {
         return new DailyMenuItem(
                 id,
