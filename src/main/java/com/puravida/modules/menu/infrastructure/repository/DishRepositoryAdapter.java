@@ -23,4 +23,16 @@ public class DishRepositoryAdapter implements DishRepositoryPort {
                 .map(DishEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public Dish save(Dish dish) {
+        return dishJpaRepository.save(DishEntity.fromDomain(dish)).toDomain();
+    }
+
+    @Override
+    public List<Dish> findAllActive() {
+        return dishJpaRepository.findByActivoTrueOrderByNombreAsc().stream()
+                .map(DishEntity::toDomain)
+                .toList();
+    }
 }

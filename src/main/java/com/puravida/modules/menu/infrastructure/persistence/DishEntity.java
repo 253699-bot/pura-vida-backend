@@ -43,6 +43,39 @@ public class DishEntity {
     protected DishEntity() {
     }
 
+    private DishEntity(
+            Integer id,
+            String nombre,
+            String descripcion,
+            String tipoPlatillo,
+            BigDecimal precioBase,
+            boolean activo,
+            LocalDateTime creadoEn,
+            LocalDateTime actualizadoEn
+    ) {
+        this.id = id;
+        this.nombre = nombre;
+        this.descripcion = descripcion;
+        this.tipoPlatillo = tipoPlatillo;
+        this.precioBase = precioBase;
+        this.activo = activo;
+        this.creadoEn = creadoEn;
+        this.actualizadoEn = actualizadoEn;
+    }
+
+    public static DishEntity fromDomain(Dish dish) {
+        return new DishEntity(
+                dish.id(),
+                dish.nombre(),
+                dish.descripcion(),
+                dish.tipoPlatillo(),
+                dish.precioBase(),
+                dish.activo(),
+                dish.creadoEn(),
+                dish.actualizadoEn()
+        );
+    }
+
     public Dish toDomain() {
         return new Dish(
                 id,

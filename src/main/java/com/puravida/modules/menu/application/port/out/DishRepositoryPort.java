@@ -7,4 +7,8 @@ import java.util.List;
 public interface DishRepositoryPort {
 
     List<Dish> findAllByIds(Collection<Integer> ids);
+
+    Dish save(Dish dish);
+
+    List<Dish> findAllActive();
 }

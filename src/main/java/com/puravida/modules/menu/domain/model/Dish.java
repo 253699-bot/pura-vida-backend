@@ -13,4 +13,22 @@ public record Dish(
         LocalDateTime creadoEn,
         LocalDateTime actualizadoEn
 ) {
+
+    public static Dish create(
+            String nombre,
+            String descripcion,
+            String tipoPlatillo,
+            BigDecimal precioBase
+    ) {
+        return new Dish(
+                null,
+                nombre,
+                descripcion,
+                tipoPlatillo,
+                precioBase,
+                true,
+                LocalDateTime.now(),
+                null
+        );
+    }
 }
