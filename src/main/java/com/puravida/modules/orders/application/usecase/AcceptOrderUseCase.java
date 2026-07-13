@@ -6,6 +6,8 @@ import com.puravida.modules.orders.application.port.in.AcceptOrderPort;
 import com.puravida.modules.orders.application.port.out.OrderRepositoryPort;
 import com.puravida.modules.orders.domain.model.Order;
 import com.puravida.modules.orders.domain.model.OrderStatus;
+import com.puravida.modules.sales.application.port.out.SaleRepositoryPort;
+import com.puravida.modules.sales.domain.model.Sale;
 import com.puravida.modules.users.domain.model.User;
 import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.NotFoundException;
@@ -16,15 +18,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class AcceptOrderUseCase implements AcceptOrderPort {
 
     private final OrderRepositoryPort orderRepositoryPort;
+    private final SaleRepositoryPort saleRepositoryPort;
     private final OrderAuthorizationService authorizationService;
     private final OrderResponseAssembler responseAssembler;
 
     public AcceptOrderUseCase(
             OrderRepositoryPort orderRepositoryPort,
+            SaleRepositoryPort saleRepositoryPort,
             OrderAuthorizationService authorizationService,
             OrderResponseAssembler responseAssembler
     ) {
         this.orderRepositoryPort = orderRepositoryPort;
+        this.saleRepositoryPort = saleRepositoryPort;
         this.authorizationService = authorizationService;
         this.responseAssembler = responseAssembler;
     }
@@ -33,11 +38,23 @@ public class AcceptOrderUseCase implements AcceptOrderPort {
     @Transactional
     public OrderResponse accept(Integer orderId, AuthenticatedUser authenticatedUser) {
         User actor = authorizationService.requireEncargada(authenticatedUser);
-        Order order = orderRepositoryPort.findById(orderId)
+        Order order = orderRepositoryPort.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new NotFoundException("No se encontro el pedido."));
+
+        if (order.estado() == OrderStatus.ACEPTADO) {
+            if (saleRepositoryPort.findByOrderId(order.id()).isPresent()) {
+                return responseAssembler.detail(order, orderRepositoryPort.findItemsByOrderId(order.id()));
+            }
+            throw new ConflictException("El pedido esta aceptado pero no tiene una venta asociada.");
+        }
+
         requirePending(order);
+        if (saleRepositoryPort.existsByOrderId(order.id())) {
+            throw new ConflictException("El pedido ya tiene una venta asociada y no puede aceptarse nuevamente.");
+        }
 
         Order acceptedOrder = orderRepositoryPort.save(order.accept(actor.id()));
+        saleRepositoryPort.save(Sale.createRemote(acceptedOrder.id(), acceptedOrder.total(), actor.id()));
         return responseAssembler.detail(
                 acceptedOrder,
                 orderRepositoryPort.findItemsByOrderId(acceptedOrder.id())

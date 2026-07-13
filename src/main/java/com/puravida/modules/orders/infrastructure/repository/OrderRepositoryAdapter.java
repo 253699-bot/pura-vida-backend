@@ -45,6 +45,11 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     }
 
     @Override
+    public Optional<Order> findByIdForUpdate(Integer orderId) {
+        return orderJpaRepository.findByIdForUpdate(orderId).map(OrderEntity::toDomain);
+    }
+
+    @Override
     public List<OrderItem> findItemsByOrderId(Integer orderId) {
         return orderItemJpaRepository.findByOrderIdOrderByIdAsc(orderId).stream()
                 .map(OrderItemEntity::toDomain)
