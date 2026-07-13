@@ -6,6 +6,7 @@ import com.puravida.modules.menu.infrastructure.persistence.DishEntity;
 import com.puravida.modules.menu.infrastructure.persistence.DishJpaRepository;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -22,6 +23,11 @@ public class DishRepositoryAdapter implements DishRepositoryPort {
         return dishJpaRepository.findAllById(ids).stream()
                 .map(DishEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<Dish> findById(Integer id) {
+        return dishJpaRepository.findById(id).map(DishEntity::toDomain);
     }
 
     @Override

@@ -31,4 +31,17 @@ public record Dish(
                 null
         );
     }
+
+    public Dish deactivate() {
+        return new Dish(
+                id,
+                nombre,
+                descripcion,
+                tipoPlatillo,
+                precioBase,
+                false,
+                creadoEn,
+                LocalDateTime.now()
+        );
+    }
 }

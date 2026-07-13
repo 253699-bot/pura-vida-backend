@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -15,9 +16,11 @@ import com.puravida.modules.auth.application.port.in.AuthenticateBearerTokenPort
 import com.puravida.modules.menu.application.dto.CreateDishRequest;
 import com.puravida.modules.menu.application.dto.DishResponse;
 import com.puravida.modules.menu.application.port.in.CreateDishPort;
+import com.puravida.modules.menu.application.port.in.DeleteDishPort;
 import com.puravida.modules.menu.application.port.in.GetActiveDishesPort;
 import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ForbiddenException;
+import com.puravida.shared.domain.exception.NotFoundException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
 import com.puravida.shared.web.GlobalExceptionHandler;
 import java.math.BigDecimal;
@@ -47,6 +50,9 @@ class AdminDishControllerTest {
 
     @MockitoBean
     private GetActiveDishesPort getActiveDishesPort;
+
+    @MockitoBean
+    private DeleteDishPort deleteDishPort;
 
     @MockitoBean
     private AuthenticateBearerTokenPort authenticateBearerTokenPort;
@@ -119,6 +125,55 @@ class AdminDishControllerTest {
                 .andExpect(jsonPath("$.data[0].activo", is(true)));
     }
 
+    @Test
+    void deactivatesDishForEncargada() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(deleteDishPort.delete(12, encargada)).thenReturn(inactiveDishResponse());
+
+        mockMvc.perform(delete("/api/v1/admin/dishes/12")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("OK")))
+                .andExpect(jsonPath("$.data.id", is(12)))
+                .andExpect(jsonPath("$.data.activo", is(false)));
+    }
+
+    @Test
+    void deleteReturnsUnauthorizedWithoutToken() throws Exception {
+        when(authenticateBearerTokenPort.authenticate(null))
+                .thenThrow(new UnauthorizedException("Token de autenticacion requerido."));
+
+        mockMvc.perform(delete("/api/v1/admin/dishes/12"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void deleteReturnsForbiddenForClientRole() throws Exception {
+        AuthenticatedUser cliente = new AuthenticatedUser(8, "cliente@example.com", UserRole.CLIENTE);
+        when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(cliente);
+        when(deleteDishPort.delete(12, cliente))
+                .thenThrow(new ForbiddenException("No tienes permisos para administrar el menu."));
+
+        mockMvc.perform(delete("/api/v1/admin/dishes/12")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void deleteReturnsNotFoundForMissingDish() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(deleteDishPort.delete(999, encargada)).thenThrow(new NotFoundException("Platillo no encontrado."));
+
+        mockMvc.perform(delete("/api/v1/admin/dishes/999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
     private AuthenticatedUser encargada() {
         return new AuthenticatedUser(2, "encargada@example.com", UserRole.ENCARGADA);
     }
@@ -142,6 +197,20 @@ class AdminDishControllerTest {
                 true,
                 LocalDateTime.of(2026, 7, 12, 10, 0),
                 null
+        );
+    }
+
+    private DishResponse inactiveDishResponse() {
+        DishResponse dish = dishResponse();
+        return new DishResponse(
+                dish.id(),
+                dish.nombre(),
+                dish.descripcion(),
+                dish.tipoPlatillo(),
+                dish.precioBase(),
+                false,
+                dish.creadoEn(),
+                LocalDateTime.of(2026, 7, 13, 10, 0)
         );
     }
 }
