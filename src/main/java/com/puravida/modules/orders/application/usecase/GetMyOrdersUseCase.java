@@ -29,7 +29,7 @@ public class GetMyOrdersUseCase implements GetMyOrdersPort {
     @Override
     @Transactional(readOnly = true)
     public List<OrderSummaryResponse> getMyOrders(AuthenticatedUser authenticatedUser) {
-        User actor = authorizationService.requireActiveUser(authenticatedUser);
+        User actor = authorizationService.requireClienteForHistory(authenticatedUser);
         return orderRepositoryPort.findByClientId(actor.id()).stream()
                 .map(responseAssembler::summary)
                 .toList();

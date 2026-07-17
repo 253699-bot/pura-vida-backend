@@ -15,6 +15,8 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, Integer> 
     @Query("SELECT entity FROM OrderEntity entity WHERE entity.id = :id")
     Optional<OrderEntity> findByIdForUpdate(@Param("id") Integer id);
 
+    Optional<OrderEntity> findByIdAndClienteId(Integer id, Integer clienteId);
+
     List<OrderEntity> findByClienteIdOrderByFechaDescHoraDesc(Integer clienteId);
 
     List<OrderEntity> findByEstadoOrderByFechaDescHoraDesc(OrderStatus estado);

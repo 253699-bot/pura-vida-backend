@@ -1,0 +1,95 @@
+{
+  "info": {
+    "_postman_id": "89923ff2-6370-4e2c-8b61-dc922eca6d68",
+    "name": "PuraVida Backend",
+    "description": "Coleccion del backend PuraVida. Incluye el historial seguro de pedidos del cliente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Historial de pedidos",
+      "item": [
+        {
+          "name": "Listar mis pedidos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "my"
+              ]
+            },
+            "description": "Lista solo los pedidos del cliente autenticado, en orden de fecha descendente."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar uno de mis pedidos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/my/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "my",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Devuelve el pedido propio y sus platillos. Un pedido ajeno o inexistente responde 404."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "clientToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}
