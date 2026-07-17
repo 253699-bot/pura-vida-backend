@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.puravida.modules.notifications.application.port.in.OrderNotificationPort;
 import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.port.out.OrderRepositoryPort;
 import com.puravida.modules.orders.domain.model.Order;
@@ -37,6 +38,9 @@ class AcceptOrderUseCaseTest {
     @Mock
     private OrderResponseAssembler responseAssembler;
 
+    @Mock
+    private OrderNotificationPort orderNotificationPort;
+
     @InjectMocks
     private AcceptOrderUseCase useCase;
 
@@ -63,6 +67,7 @@ class AcceptOrderUseCaseTest {
         assertThat(savedSale.getValue().orderId()).isEqualTo(10);
         assertThat(savedSale.getValue().source().databaseValue()).isEqualTo("remota");
         assertThat(savedSale.getValue().total()).isEqualByComparingTo("130.00");
+        verify(orderNotificationPort).notifyOrderAccepted(10, 1);
     }
 
     @Test
@@ -80,6 +85,7 @@ class AcceptOrderUseCaseTest {
 
         verify(orderRepositoryPort, never()).save(any());
         verify(saleRepositoryPort, never()).save(any());
+        verify(orderNotificationPort, never()).notifyOrderAccepted(any(), any());
     }
 
     @Test
@@ -92,5 +98,6 @@ class AcceptOrderUseCaseTest {
                 .isInstanceOf(ConflictException.class);
 
         verify(orderRepositoryPort, never()).save(any());
+        verify(orderNotificationPort, never()).notifyOrderAccepted(any(), any());
     }
 }

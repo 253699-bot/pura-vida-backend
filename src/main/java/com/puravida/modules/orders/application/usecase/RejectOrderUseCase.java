@@ -1,6 +1,7 @@
 package com.puravida.modules.orders.application.usecase;
 
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
+import com.puravida.modules.notifications.application.port.in.OrderNotificationPort;
 import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.dto.RejectOrderRequest;
 import com.puravida.modules.orders.application.port.in.RejectOrderPort;
@@ -20,15 +21,18 @@ public class RejectOrderUseCase implements RejectOrderPort {
     private final OrderRepositoryPort orderRepositoryPort;
     private final OrderAuthorizationService authorizationService;
     private final OrderResponseAssembler responseAssembler;
+    private final OrderNotificationPort orderNotificationPort;
 
     public RejectOrderUseCase(
             OrderRepositoryPort orderRepositoryPort,
             OrderAuthorizationService authorizationService,
-            OrderResponseAssembler responseAssembler
+            OrderResponseAssembler responseAssembler,
+            OrderNotificationPort orderNotificationPort
     ) {
         this.orderRepositoryPort = orderRepositoryPort;
         this.authorizationService = authorizationService;
         this.responseAssembler = responseAssembler;
+        this.orderNotificationPort = orderNotificationPort;
     }
 
     @Override
@@ -45,6 +49,11 @@ public class RejectOrderUseCase implements RejectOrderPort {
         requirePending(order);
 
         Order rejectedOrder = orderRepositoryPort.save(order.reject(actor.id(), motivoRechazo));
+        orderNotificationPort.notifyOrderRejected(
+                rejectedOrder.id(),
+                rejectedOrder.clienteId(),
+                rejectedOrder.motivoRechazo()
+        );
         return responseAssembler.detail(
                 rejectedOrder,
                 orderRepositoryPort.findItemsByOrderId(rejectedOrder.id())

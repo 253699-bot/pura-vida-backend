@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.puravida.modules.notifications.application.port.in.OrderNotificationPort;
 import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.dto.RejectOrderRequest;
 import com.puravida.modules.orders.application.port.out.OrderRepositoryPort;
@@ -33,6 +34,9 @@ class RejectOrderUseCaseTest {
     @Mock
     private OrderResponseAssembler responseAssembler;
 
+    @Mock
+    private OrderNotificationPort orderNotificationPort;
+
     @InjectMocks
     private RejectOrderUseCase useCase;
 
@@ -56,6 +60,7 @@ class RejectOrderUseCaseTest {
         verify(orderRepositoryPort).save(savedOrder.capture());
         assertThat(savedOrder.getValue().estado()).isEqualTo(OrderStatus.RECHAZADO);
         assertThat(savedOrder.getValue().motivoRechazo()).isEqualTo("No hay tortillas disponibles");
+        verify(orderNotificationPort).notifyOrderRejected(10, 1, "No hay tortillas disponibles");
     }
 
     @Test

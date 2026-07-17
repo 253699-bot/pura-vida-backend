@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "89923ff2-6370-4e2c-8b61-dc922eca6d68",
     "name": "PuraVida Backend",
-    "description": "Coleccion del backend PuraVida. Incluye el historial seguro de pedidos del cliente.",
+    "description": "Coleccion del backend PuraVida. Incluye historial seguro de pedidos y notificaciones internas propias.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -73,6 +73,104 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Listar mis notificaciones",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": "Lista exclusivamente las notificaciones del usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Marcar notificacion como leida",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "description": "Marca una notificacion propia. Una notificacion ajena o inexistente responde 404."
+          },
+          "response": []
+        },
+        {
+          "name": "Marcar todas como leidas",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Marca como leidas solo las notificaciones del usuario autenticado."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -87,7 +185,17 @@
       "type": "string"
     },
     {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "orderId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
       "value": "1",
       "type": "string"
     }

@@ -1,6 +1,7 @@
 package com.puravida.modules.orders.application.usecase;
 
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
+import com.puravida.modules.notifications.application.port.in.OrderNotificationPort;
 import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.port.in.AcceptOrderPort;
 import com.puravida.modules.orders.application.port.out.OrderRepositoryPort;
@@ -21,17 +22,20 @@ public class AcceptOrderUseCase implements AcceptOrderPort {
     private final SaleRepositoryPort saleRepositoryPort;
     private final OrderAuthorizationService authorizationService;
     private final OrderResponseAssembler responseAssembler;
+    private final OrderNotificationPort orderNotificationPort;
 
     public AcceptOrderUseCase(
             OrderRepositoryPort orderRepositoryPort,
             SaleRepositoryPort saleRepositoryPort,
             OrderAuthorizationService authorizationService,
-            OrderResponseAssembler responseAssembler
+            OrderResponseAssembler responseAssembler,
+            OrderNotificationPort orderNotificationPort
     ) {
         this.orderRepositoryPort = orderRepositoryPort;
         this.saleRepositoryPort = saleRepositoryPort;
         this.authorizationService = authorizationService;
         this.responseAssembler = responseAssembler;
+        this.orderNotificationPort = orderNotificationPort;
     }
 
     @Override
@@ -55,6 +59,7 @@ public class AcceptOrderUseCase implements AcceptOrderPort {
 
         Order acceptedOrder = orderRepositoryPort.save(order.accept(actor.id()));
         saleRepositoryPort.save(Sale.createRemote(acceptedOrder.id(), acceptedOrder.total(), actor.id()));
+        orderNotificationPort.notifyOrderAccepted(acceptedOrder.id(), acceptedOrder.clienteId());
         return responseAssembler.detail(
                 acceptedOrder,
                 orderRepositoryPort.findItemsByOrderId(acceptedOrder.id())
