@@ -20,14 +20,20 @@ import com.puravida.modules.cart.application.dto.CartItemResponse;
 import com.puravida.modules.cart.application.dto.CartResponse;
 import com.puravida.modules.cart.application.dto.UpdateCartItemQuantityRequest;
 import com.puravida.modules.cart.application.port.in.AddCartItemPort;
+import com.puravida.modules.cart.application.port.in.CheckoutCartPort;
 import com.puravida.modules.cart.application.port.in.DeleteCartItemPort;
 import com.puravida.modules.cart.application.port.in.GetCartPort;
 import com.puravida.modules.cart.application.port.in.UpdateCartItemQuantityPort;
+import com.puravida.modules.orders.application.dto.OrderItemResponse;
+import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.users.domain.model.UserRole;
+import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.NotFoundException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
 import com.puravida.shared.web.GlobalExceptionHandler;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +65,9 @@ class CartControllerTest {
 
     @MockitoBean
     private DeleteCartItemPort deleteCartItemPort;
+
+    @MockitoBean
+    private CheckoutCartPort checkoutCartPort;
 
     @MockitoBean
     private AuthenticateBearerTokenPort authenticateBearerTokenPort;
@@ -119,6 +128,41 @@ class CartControllerTest {
     }
 
     @Test
+    void checkoutCreatesOrderWithDetail() throws Exception {
+        when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client());
+        when(checkoutCartPort.checkout(client())).thenReturn(orderResponse());
+
+        mockMvc.perform(post("/api/v1/cart/checkout")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id", is(10)))
+                .andExpect(jsonPath("$.data.estado", is("pendiente")))
+                .andExpect(jsonPath("$.data.total", is(180.00)))
+                .andExpect(jsonPath("$.data.items[0].menuItemId", is(20)))
+                .andExpect(jsonPath("$.data.items[0].platilloId", is(2)));
+    }
+
+    @Test
+    void checkoutReturnsUnauthorizedWithoutToken() throws Exception {
+        when(authenticateBearerTokenPort.authenticate(null))
+                .thenThrow(new UnauthorizedException("Token de autenticacion requerido."));
+
+        mockMvc.perform(post("/api/v1/cart/checkout"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void checkoutReturnsConflictForEmptyCart() throws Exception {
+        when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client());
+        when(checkoutCartPort.checkout(client())).thenThrow(new ConflictException("El carrito esta vacio."));
+
+        mockMvc.perform(post("/api/v1/cart/checkout")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", is("El carrito esta vacio.")));
+    }
+
+    @Test
     void deletesOwnedCartItemWithNoContent() throws Exception {
         when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client());
         doNothing().when(deleteCartItemPort).delete(8, client());
@@ -146,5 +190,15 @@ class CartControllerTest {
 
     private CartItemResponse itemResponse() {
         return new CartItemResponse(8, 2, "Comida corrida", 1, new BigDecimal("85.00"), new BigDecimal("85.00"));
+    }
+
+    private OrderResponse orderResponse() {
+        OrderItemResponse item = new OrderItemResponse(
+                30, 20, 2, "Comida corrida", 2, new BigDecimal("90.00"), new BigDecimal("180.00")
+        );
+        return new OrderResponse(
+                10, 1, "Cliente", "pendiente", LocalDate.now(), LocalTime.NOON,
+                new BigDecimal("180.00"), null, null, null, null, List.of(item)
+        );
     }
 }

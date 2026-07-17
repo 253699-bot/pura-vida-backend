@@ -7,9 +7,11 @@ import com.puravida.modules.cart.application.dto.CartItemResponse;
 import com.puravida.modules.cart.application.dto.CartResponse;
 import com.puravida.modules.cart.application.dto.UpdateCartItemQuantityRequest;
 import com.puravida.modules.cart.application.port.in.AddCartItemPort;
+import com.puravida.modules.cart.application.port.in.CheckoutCartPort;
 import com.puravida.modules.cart.application.port.in.DeleteCartItemPort;
 import com.puravida.modules.cart.application.port.in.GetCartPort;
 import com.puravida.modules.cart.application.port.in.UpdateCartItemQuantityPort;
+import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.shared.web.ApiPaths;
 import com.puravida.shared.web.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -33,6 +35,7 @@ public class CartController {
     private final AddCartItemPort addCartItemPort;
     private final UpdateCartItemQuantityPort updateCartItemQuantityPort;
     private final DeleteCartItemPort deleteCartItemPort;
+    private final CheckoutCartPort checkoutCartPort;
     private final AuthenticateBearerTokenPort authenticateBearerTokenPort;
 
     public CartController(
@@ -40,12 +43,14 @@ public class CartController {
             AddCartItemPort addCartItemPort,
             UpdateCartItemQuantityPort updateCartItemQuantityPort,
             DeleteCartItemPort deleteCartItemPort,
+            CheckoutCartPort checkoutCartPort,
             AuthenticateBearerTokenPort authenticateBearerTokenPort
     ) {
         this.getCartPort = getCartPort;
         this.addCartItemPort = addCartItemPort;
         this.updateCartItemQuantityPort = updateCartItemQuantityPort;
         this.deleteCartItemPort = deleteCartItemPort;
+        this.checkoutCartPort = checkoutCartPort;
         this.authenticateBearerTokenPort = authenticateBearerTokenPort;
     }
 
@@ -64,6 +69,14 @@ public class CartController {
     ) {
         AuthenticatedUser user = authenticateBearerTokenPort.authenticate(authorizationHeader);
         return ApiResponse.ok(addCartItemPort.add(request, user));
+    }
+
+    @PostMapping("/checkout")
+    public ApiResponse<OrderResponse> checkout(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader
+    ) {
+        AuthenticatedUser user = authenticateBearerTokenPort.authenticate(authorizationHeader);
+        return ApiResponse.ok(checkoutCartPort.checkout(user));
     }
 
     @PatchMapping("/items/{cartItemId}")
