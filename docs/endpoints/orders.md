@@ -1,4 +1,4 @@
-# Historial de pedidos del cliente
+# Pedidos
 
 Los endpoints requieren `Authorization: Bearer <token>` de un usuario activo con
 rol `cliente`. La identidad se obtiene del JWT; el cliente no envia su ID en la
@@ -85,4 +85,60 @@ curl "$BASE_URL/api/v1/orders/my" \
 
 curl "$BASE_URL/api/v1/orders/my/$ORDER_ID" \
   -H "Authorization: Bearer $CLIENT_TOKEN"
+```
+
+## Finalizar un pedido aceptado
+
+`PATCH /api/v1/admin/orders/{id}/complete`
+
+Requiere `Authorization: Bearer <token>` de una usuaria activa con rol
+`encargada`. La unica transicion permitida es:
+
+```text
+aceptado -> finalizado
+```
+
+La aceptacion previa ya crea una unica venta remota asociada al pedido. La
+finalizacion valida que esa venta exista, pero no crea otra venta ni modifica o
+anula la existente. Tambien conserva `respondidoPor` y `respondidoEn`, que
+registran quien acepto originalmente el pedido.
+
+En bases existentes, `database/migrations/005_add_finalized_order_status.sql`
+debe aplicarse antes de habilitar este endpoint para que `PEDIDOS.Estado`
+admita `finalizado`.
+
+Respuesta abreviada:
+
+```json
+{
+  "status": "OK",
+  "data": {
+    "id": 10,
+    "estado": "finalizado",
+    "total": 180.00,
+    "respondidoPor": 2,
+    "respondidoEn": "2026-07-17T13:35:00"
+  }
+}
+```
+
+Errores controlados:
+
+- `401 Unauthorized`: falta el bearer token o no es valido.
+- `403 Forbidden`: el usuario no existe, esta inactivo o no tiene rol
+  `encargada`.
+- `404 Not Found`: el pedido no existe.
+- `409 Conflict`: el pedido esta pendiente, rechazado, cancelado, ya
+  finalizado, o esta aceptado pero no conserva su venta asociada.
+
+Los contadores `aceptados` del dashboard y del reporte semanal incluyen pedidos
+en estado `aceptado` y `finalizado`, porque ambos alcanzaron la aceptacion. Los
+importes y conteos economicos siguen obteniendose exclusivamente desde
+`VENTAS`.
+
+Ejemplo manual:
+
+```bash
+curl -X PATCH "$BASE_URL/api/v1/admin/orders/$ORDER_ID/complete" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
 ```

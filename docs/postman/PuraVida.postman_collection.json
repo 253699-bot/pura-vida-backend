@@ -2,10 +2,220 @@
   "info": {
     "_postman_id": "89923ff2-6370-4e2c-8b61-dc922eca6d68",
     "name": "PuraVida Backend",
-    "description": "Coleccion del backend PuraVida. Incluye historial seguro de pedidos y notificaciones internas propias.",
+    "description": "Coleccion del backend PuraVida. Incluye autenticacion, perfil propio, historial seguro, finalizacion de pedidos aceptados y notificaciones internas propias.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "Autenticacion y perfil",
+      "item": [
+        {
+          "name": "Registrar cliente",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Perez\",\n  \"correo\": \"{{registerEmail}}\",\n  \"telefono\": \"9610000000\",\n  \"password\": \"{{registerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea siempre un cliente con password BCrypt. Un correo duplicado responde 409 y la respuesta no expone el hash."
+          },
+          "response": []
+        },
+        {
+          "name": "Iniciar sesion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const payload = pm.response.json();",
+                  "  pm.collectionVariables.set('userToken', payload.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{registerEmail}}\",\n  \"password\": \"{{registerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesion y guarda el JWT de respuesta en la variable userToken de la coleccion."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Consulta exclusivamente el perfil identificado por el userId del bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Maria\",\n  \"telefono\": \"9611111111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Actualiza nombre y/o telefono del usuario autenticado. Correo, rol y password se rechazan."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Administracion de pedidos",
+      "item": [
+        {
+          "name": "Finalizar pedido aceptado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{orderId}}",
+                "complete"
+              ]
+            },
+            "description": "Transiciona un pedido de aceptado a finalizado. Responde 409 para cualquier otro estado y no crea ni modifica ventas."
+          },
+          "response": []
+        }
+      ]
+    },
     {
       "name": "Historial de pedidos",
       "item": [
@@ -180,7 +390,22 @@
       "type": "string"
     },
     {
+      "key": "registerEmail",
+      "value": "ana@example.com",
+      "type": "string"
+    },
+    {
+      "key": "registerPassword",
+      "value": "password123",
+      "type": "string"
+    },
+    {
       "key": "clientToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
       "value": "",
       "type": "string"
     },

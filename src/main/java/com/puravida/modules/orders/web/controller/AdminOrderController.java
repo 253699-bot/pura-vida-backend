@@ -6,6 +6,7 @@ import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.dto.OrderSummaryResponse;
 import com.puravida.modules.orders.application.dto.RejectOrderRequest;
 import com.puravida.modules.orders.application.port.in.AcceptOrderPort;
+import com.puravida.modules.orders.application.port.in.CompleteOrderPort;
 import com.puravida.modules.orders.application.port.in.GetAdminOrdersPort;
 import com.puravida.modules.orders.application.port.in.RejectOrderPort;
 import com.puravida.shared.web.ApiPaths;
@@ -29,17 +30,20 @@ public class AdminOrderController {
     private final GetAdminOrdersPort getAdminOrdersPort;
     private final AcceptOrderPort acceptOrderPort;
     private final RejectOrderPort rejectOrderPort;
+    private final CompleteOrderPort completeOrderPort;
     private final AuthenticateBearerTokenPort authenticateBearerTokenPort;
 
     public AdminOrderController(
             GetAdminOrdersPort getAdminOrdersPort,
             AcceptOrderPort acceptOrderPort,
             RejectOrderPort rejectOrderPort,
+            CompleteOrderPort completeOrderPort,
             AuthenticateBearerTokenPort authenticateBearerTokenPort
     ) {
         this.getAdminOrdersPort = getAdminOrdersPort;
         this.acceptOrderPort = acceptOrderPort;
         this.rejectOrderPort = rejectOrderPort;
+        this.completeOrderPort = completeOrderPort;
         this.authenticateBearerTokenPort = authenticateBearerTokenPort;
     }
 
@@ -69,5 +73,14 @@ public class AdminOrderController {
     ) {
         AuthenticatedUser authenticatedUser = authenticateBearerTokenPort.authenticate(authorizationHeader);
         return ApiResponse.ok(rejectOrderPort.reject(id, request, authenticatedUser));
+    }
+
+    @PatchMapping("/{id}/complete")
+    public ApiResponse<OrderResponse> complete(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @PathVariable("id") Integer id
+    ) {
+        AuthenticatedUser authenticatedUser = authenticateBearerTokenPort.authenticate(authorizationHeader);
+        return ApiResponse.ok(completeOrderPort.complete(id, authenticatedUser));
     }
 }
