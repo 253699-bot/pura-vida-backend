@@ -1,12 +1,16 @@
 package com.puravida.modules.auth.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.puravida.modules.auth.application.dto.RegisterRequest;
 import com.puravida.modules.auth.application.port.out.PasswordHasherPort;
+import com.puravida.modules.auth.domain.exception.EmailAlreadyRegisteredException;
 import com.puravida.modules.users.application.port.out.UserRepositoryPort;
 import com.puravida.modules.users.domain.model.User;
 import com.puravida.modules.users.domain.model.UserRole;
@@ -68,5 +72,22 @@ class RegisterUserUseCaseTest {
         assertThat(savedUser.passwordHash()).isEqualTo("hashed-password");
         assertThat(savedUser.activo()).isTrue();
         assertThat(savedUser.notificacionesActivas()).isTrue();
+    }
+
+    @Test
+    void rejectsAlreadyRegisteredNormalizedEmail() {
+        when(userRepositoryPort.existsByCorreo("ana@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> registerUserUseCase.register(new RegisterRequest(
+                "Ana Perez",
+                " ANA@EXAMPLE.COM ",
+                null,
+                "password123"
+        )))
+                .isInstanceOf(EmailAlreadyRegisteredException.class)
+                .hasMessage("El correo ya esta registrado.");
+
+        verify(userRepositoryPort, never()).save(any());
+        verifyNoInteractions(passwordHasherPort);
     }
 }
