@@ -69,13 +69,15 @@ public class DashboardMetricsRepositoryAdapter implements DashboardMetricsReposi
         Object[] row = entityManager.createQuery("""
                         SELECT
                             SUM(CASE WHEN entity.estado = :pending THEN 1 ELSE 0 END),
-                            SUM(CASE WHEN entity.estado = :accepted THEN 1 ELSE 0 END),
+                            SUM(CASE WHEN entity.estado = :accepted OR entity.estado = :finalized
+                                THEN 1 ELSE 0 END),
                             SUM(CASE WHEN entity.estado = :rejected THEN 1 ELSE 0 END)
                         FROM OrderEntity entity
                         WHERE entity.fecha BETWEEN :from AND :to
                         """, Object[].class)
                 .setParameter("pending", OrderStatus.PENDIENTE)
                 .setParameter("accepted", OrderStatus.ACEPTADO)
+                .setParameter("finalized", OrderStatus.FINALIZADO)
                 .setParameter("rejected", OrderStatus.RECHAZADO)
                 .setParameter("from", from)
                 .setParameter("to", to)
