@@ -25,6 +25,13 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
     }
 
     @Override
+    public List<CartItem> findByUserIdForUpdate(Integer userId) {
+        return cartItemJpaRepository.findByUserIdForUpdate(userId).stream()
+                .map(CartItemJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<CartItem> findById(Integer cartItemId) {
         return cartItemJpaRepository.findById(cartItemId).map(CartItemJpaEntity::toDomain);
     }
@@ -42,5 +49,10 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
     @Override
     public void deleteById(Integer cartItemId) {
         cartItemJpaRepository.deleteById(cartItemId);
+    }
+
+    @Override
+    public void deleteByUserId(Integer userId) {
+        cartItemJpaRepository.deleteByUserId(userId);
     }
 }

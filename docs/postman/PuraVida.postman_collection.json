@@ -1,0 +1,1095 @@
+{
+  "info": {
+    "_postman_id": "89923ff2-6370-4e2c-8b61-dc922eca6d68",
+    "name": "PuraVida Backend",
+    "description": "Coleccion del backend PuraVida. Incluye autenticacion, perfil propio, historial seguro, finalizacion de pedidos aceptados y notificaciones internas propias.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "if (!pm.collectionVariables.get('weekStart')) {",
+          "  const monday = new Date();",
+          "  const daysSinceMonday = (monday.getDay() + 6) % 7;",
+          "  monday.setDate(monday.getDate() - daysSinceMonday);",
+          "  const pad = value => String(value).padStart(2, '0');",
+          "  const weekStart = `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;",
+          "  pm.collectionVariables.set('weekStart', weekStart);",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Demo E2E MVP - pedido aceptado",
+      "description": "Flujo secuencial: login cliente, menu, carrito, checkout, login encargada, aceptacion, ventas, dashboard y reportes JSON/PDF. Requiere fonda abierta, menu del dia disponible y credenciales locales en variables.",
+      "item": [
+        {
+          "name": "01 - Login cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login cliente exitoso', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.user.rol).to.eql('cliente');",
+                  "  pm.collectionVariables.set('clientToken', payload.data.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{clientEmail}}\",\n  \"password\": \"{{clientPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Ver menu de hoy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Menu configurado con platillo disponible', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.configured).to.eql(true);",
+                  "  const available = payload.data.items.find(item => item.disponible);",
+                  "  pm.expect(available, 'Se requiere al menos un platillo disponible').to.exist;",
+                  "  if (available) {",
+                  "    pm.collectionVariables.set('dishId', String(available.platilloId));",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/menu/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "menu",
+                "today"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Agregar platillo al carrito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Platillo agregado al carrito', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.dishId).to.eql(Number(pm.collectionVariables.get('dishId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dishId\": {{dishId}},\n  \"cantidad\": {{quantity}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Checkout del carrito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Checkout crea pedido pendiente', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.estado).to.eql('pendiente');",
+                  "  pm.collectionVariables.set('orderId', String(payload.data.id));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "checkout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Login encargada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login encargada exitoso', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.user.rol).to.eql('encargada');",
+                  "  pm.collectionVariables.set('adminToken', payload.data.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Aceptar pedido generado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Pedido aceptado', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.id).to.eql(Number(pm.collectionVariables.get('orderId')));",
+                  "  pm.expect(payload.data.estado).to.eql('aceptado');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{orderId}}",
+                "accept"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Verificar venta remota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Existe venta activa para el pedido', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  const orderId = Number(pm.collectionVariables.get('orderId'));",
+                  "  const sale = payload.data.find(item => item.pedidoId === orderId);",
+                  "  pm.expect(sale, 'Venta asociada al pedido').to.exist;",
+                  "  if (sale) {",
+                  "    pm.expect(sale.fuente).to.eql('remota');",
+                  "    pm.expect(sale.estado).to.eql('activa');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/sales?fuente=remota&estado=activa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "fuente",
+                  "value": "remota"
+                },
+                {
+                  "key": "estado",
+                  "value": "activa"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Consultar dashboard de hoy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Dashboard disponible', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data).to.have.property('ventas');",
+                  "  pm.expect(payload.data).to.have.property('pedidos');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dashboard/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dashboard",
+                "today"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Consultar resumen semanal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Resumen semanal disponible', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const payload = pm.response.json();",
+                  "  pm.expect(payload.data.semanaInicio).to.eql(pm.collectionVariables.get('weekStart'));",
+                  "  pm.expect(payload.data).to.have.property('ventas');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reports/weekly/summary?weekStart={{weekStart}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "weekly",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "weekStart",
+                  "value": "{{weekStart}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Descargar reporte semanal PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('PDF semanal descargable', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include('reporte-semanal-puravida-');",
+                  "  pm.expect(pm.response.text().slice(0, 5)).to.eql('%PDF-');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reports/weekly/pdf?weekStart={{weekStart}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "weekly",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "weekStart",
+                  "value": "{{weekStart}}"
+                }
+              ]
+            },
+            "description": "Valida headers y firma PDF. Use Send and Download para guardar el archivo localmente."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Autenticacion y perfil",
+      "item": [
+        {
+          "name": "Registrar cliente",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Perez\",\n  \"correo\": \"{{registerEmail}}\",\n  \"telefono\": \"9610000000\",\n  \"password\": \"{{registerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea siempre un cliente con password BCrypt. Un correo duplicado responde 409 y la respuesta no expone el hash."
+          },
+          "response": []
+        },
+        {
+          "name": "Iniciar sesion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const payload = pm.response.json();",
+                  "  pm.collectionVariables.set('userToken', payload.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{registerEmail}}\",\n  \"password\": \"{{registerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesion y guarda el JWT de respuesta en la variable userToken de la coleccion."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Consulta exclusivamente el perfil identificado por el userId del bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Maria\",\n  \"telefono\": \"9611111111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Actualiza nombre y/o telefono del usuario autenticado. Correo, rol y password se rechazan."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Administracion de pedidos",
+      "item": [
+        {
+          "name": "Aceptar pedido",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{orderId}}",
+                "accept"
+              ]
+            },
+            "description": "Acepta un pedido pendiente y genera una venta remota."
+          },
+          "response": []
+        },
+        {
+          "name": "Rechazar pedido alternativo",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivoRechazo\": \"Demostracion de rechazo E2E\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{rejectedOrderId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{rejectedOrderId}}",
+                "reject"
+              ]
+            },
+            "description": "Ruta alternativa: use un segundo pedido pendiente en rejectedOrderId; no reutilice el pedido ya aceptado."
+          },
+          "response": []
+        },
+        {
+          "name": "Finalizar pedido aceptado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{orderId}}",
+                "complete"
+              ]
+            },
+            "description": "Transiciona un pedido de aceptado a finalizado. Responde 409 para cualquier otro estado y no crea ni modifica ventas."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Historial de pedidos",
+      "item": [
+        {
+          "name": "Listar mis pedidos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "my"
+              ]
+            },
+            "description": "Lista solo los pedidos del cliente autenticado, en orden de fecha descendente."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar uno de mis pedidos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/my/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "my",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Devuelve el pedido propio y sus platillos. Un pedido ajeno o inexistente responde 404."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Listar mis notificaciones",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": "Lista exclusivamente las notificaciones del usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Marcar notificacion como leida",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "description": "Marca una notificacion propia. Una notificacion ajena o inexistente responde 404."
+          },
+          "response": []
+        },
+        {
+          "name": "Marcar todas como leidas",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Marca como leidas solo las notificaciones del usuario autenticado."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "registerEmail",
+      "value": "ana@example.com",
+      "type": "string"
+    },
+    {
+      "key": "registerPassword",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "clientEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clientPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clientToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rejectedOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dishId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "quantity",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "weekStart",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}

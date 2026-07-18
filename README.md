@@ -178,3 +178,13 @@ Response:
 ```
 
 Las respuestas no exponen `Password_hash`.
+
+## Documentacion funcional
+
+- [Autenticacion y perfil propio](docs/endpoints/auth-profile.md)
+- [Reportes semanales JSON y PDF](docs/endpoints/reports.md)
+- [Demo E2E del MVP con Postman](docs/testing/mvp-e2e-postman.md)
+- [Historial de pedidos del cliente](docs/endpoints/orders.md)
+- [Carrito](docs/endpoints/cart.md)
+- [Catalogo de platillos](docs/endpoints/dishes.md)
+- [Coleccion Postman](docs/postman/PuraVida.postman_collection.json)

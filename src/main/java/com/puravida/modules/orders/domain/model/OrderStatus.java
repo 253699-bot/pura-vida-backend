@@ -6,6 +6,7 @@ import java.util.Arrays;
 public enum OrderStatus {
     PENDIENTE("pendiente"),
     ACEPTADO("aceptado"),
+    FINALIZADO("finalizado"),
     RECHAZADO("rechazado"),
     CANCELADO("cancelado");
 

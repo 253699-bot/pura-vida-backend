@@ -31,7 +31,8 @@ class GetMyOrdersUseCaseTest {
     @Test
     void returnsOnlyOrdersForAuthenticatedUser() {
         OrderSummaryResponse summary = OrderSummaryResponse.from(TestOrderData.pendingOrder(), "Cliente Prueba");
-        when(authorizationService.requireActiveUser(TestOrderData.authenticatedClient())).thenReturn(TestOrderData.client());
+        when(authorizationService.requireClienteForHistory(TestOrderData.authenticatedClient()))
+                .thenReturn(TestOrderData.client());
         when(orderRepositoryPort.findByClientId(1)).thenReturn(List.of(TestOrderData.pendingOrder()));
         when(responseAssembler.summary(TestOrderData.pendingOrder())).thenReturn(summary);
 

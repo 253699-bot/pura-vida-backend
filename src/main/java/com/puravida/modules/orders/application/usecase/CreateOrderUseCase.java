@@ -1,6 +1,7 @@
 package com.puravida.modules.orders.application.usecase;
 
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
+import com.puravida.modules.notifications.application.port.in.OrderNotificationPort;
 import com.puravida.modules.orders.application.dto.CreateOrderItemRequest;
 import com.puravida.modules.orders.application.dto.CreateOrderRequest;
 import com.puravida.modules.orders.application.dto.OrderResponse;
@@ -35,19 +36,22 @@ public class CreateOrderUseCase implements CreateOrderPort {
     private final BusinessStatusForOrderRepositoryPort businessStatusRepositoryPort;
     private final OrderAuthorizationService authorizationService;
     private final OrderResponseAssembler responseAssembler;
+    private final OrderNotificationPort orderNotificationPort;
 
     public CreateOrderUseCase(
             OrderRepositoryPort orderRepositoryPort,
             MenuForOrderRepositoryPort menuRepositoryPort,
             BusinessStatusForOrderRepositoryPort businessStatusRepositoryPort,
             OrderAuthorizationService authorizationService,
-            OrderResponseAssembler responseAssembler
+            OrderResponseAssembler responseAssembler,
+            OrderNotificationPort orderNotificationPort
     ) {
         this.orderRepositoryPort = orderRepositoryPort;
         this.menuRepositoryPort = menuRepositoryPort;
         this.businessStatusRepositoryPort = businessStatusRepositoryPort;
         this.authorizationService = authorizationService;
         this.responseAssembler = responseAssembler;
+        this.orderNotificationPort = orderNotificationPort;
     }
 
     @Override
@@ -83,6 +87,7 @@ public class CreateOrderUseCase implements CreateOrderPort {
                         item.subtotal()
                 ))
                 .toList());
+        orderNotificationPort.notifyOrderCreated(savedOrder.id());
 
         return responseAssembler.detail(savedOrder, savedItems);
     }

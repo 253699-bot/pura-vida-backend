@@ -59,8 +59,8 @@ public class OrderController {
         return ApiResponse.ok(getMyOrdersPort.getMyOrders(authenticatedUser));
     }
 
-    @GetMapping("/{id}")
-    public ApiResponse<OrderResponse> getOrder(
+    @GetMapping("/my/{id}")
+    public ApiResponse<OrderResponse> getMyOrder(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
             @PathVariable("id") Integer id
     ) {

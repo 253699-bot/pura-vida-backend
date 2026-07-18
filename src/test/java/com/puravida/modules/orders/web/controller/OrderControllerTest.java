@@ -22,6 +22,7 @@ import com.puravida.modules.orders.application.port.in.GetMyOrdersPort;
 import com.puravida.modules.orders.application.port.in.GetOrderDetailPort;
 import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ForbiddenException;
+import com.puravida.shared.domain.exception.NotFoundException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
 import com.puravida.shared.web.GlobalExceptionHandler;
 import java.math.BigDecimal;
@@ -121,23 +122,95 @@ class OrderControllerTest {
         mockMvc.perform(get("/api/v1/orders/my").header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id", is(10)))
-                .andExpect(jsonPath("$.data[0].clienteId", is(1)));
+                .andExpect(jsonPath("$.data[0].clienteId", is(1)))
+                .andExpect(jsonPath("$.data[0].estado", is("pendiente")))
+                .andExpect(jsonPath("$.data[0].fecha", is("2026-07-10")))
+                .andExpect(jsonPath("$.data[0].total", is(130.00)));
     }
 
     @Test
-    void getOrderReturnsForbiddenWhenUseCaseRejectsOwnership() throws Exception {
+    void getMyOrdersReturnsUnauthorizedWithoutToken() throws Exception {
+        when(authenticateBearerTokenPort.authenticate(null))
+                .thenThrow(new UnauthorizedException("Token de autenticacion requerido."));
+
+        mockMvc.perform(get("/api/v1/orders/my"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void getMyOrdersReturnsForbiddenForNonClient() throws Exception {
+        AuthenticatedUser manager = manager();
+        when(authenticateBearerTokenPort.authenticate("Bearer manager-token")).thenReturn(manager);
+        when(getMyOrdersPort.getMyOrders(manager))
+                .thenThrow(new ForbiddenException("Solo los clientes pueden consultar su historial de pedidos."));
+
+        mockMvc.perform(get("/api/v1/orders/my")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer manager-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void getMyOrderReturnsOwnedOrderWithDishDetail() throws Exception {
+        AuthenticatedUser client = client();
+        when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client);
+        when(getOrderDetailPort.getOrder(10, client)).thenReturn(orderResponse());
+
+        mockMvc.perform(get("/api/v1/orders/my/10")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id", is(10)))
+                .andExpect(jsonPath("$.data.estado", is("pendiente")))
+                .andExpect(jsonPath("$.data.fecha", is("2026-07-10")))
+                .andExpect(jsonPath("$.data.total", is(130.00)))
+                .andExpect(jsonPath("$.data.items[0].nombre", is("Tacos")))
+                .andExpect(jsonPath("$.data.items[0].cantidad", is(2)))
+                .andExpect(jsonPath("$.data.items[0].subtotal", is(130.00)));
+    }
+
+    @Test
+    void getMyOrderReturnsUnauthorizedWithoutToken() throws Exception {
+        when(authenticateBearerTokenPort.authenticate(null))
+                .thenThrow(new UnauthorizedException("Token de autenticacion requerido."));
+
+        mockMvc.perform(get("/api/v1/orders/my/10"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void getMyOrderHidesAnotherClientsOrderAsNotFound() throws Exception {
         AuthenticatedUser client = client();
         when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client);
         when(getOrderDetailPort.getOrder(10, client))
-                .thenThrow(new ForbiddenException("No tienes permisos para consultar este pedido."));
+                .thenThrow(new NotFoundException("No se encontro el pedido."));
 
-        mockMvc.perform(get("/api/v1/orders/10").header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
-                .andExpect(status().isForbidden())
+        mockMvc.perform(get("/api/v1/orders/my/10")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void getMyOrderReturnsNotFoundForMissingOrder() throws Exception {
+        AuthenticatedUser client = client();
+        when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client);
+        when(getOrderDetailPort.getOrder(99, client))
+                .thenThrow(new NotFoundException("No se encontro el pedido."));
+
+        mockMvc.perform(get("/api/v1/orders/my/99")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status", is("ERROR")));
     }
 
     private AuthenticatedUser client() {
         return new AuthenticatedUser(1, "cliente@example.com", UserRole.CLIENTE);
+    }
+
+    private AuthenticatedUser manager() {
+        return new AuthenticatedUser(2, "encargada@example.com", UserRole.ENCARGADA);
     }
 
     private OrderResponse orderResponse() {

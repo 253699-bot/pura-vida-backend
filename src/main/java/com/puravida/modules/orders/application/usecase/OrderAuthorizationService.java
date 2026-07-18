@@ -40,6 +40,14 @@ public class OrderAuthorizationService {
         return actor;
     }
 
+    public User requireClienteForHistory(AuthenticatedUser authenticatedUser) {
+        User actor = requireActiveUser(authenticatedUser);
+        if (actor.rol() != UserRole.CLIENTE) {
+            throw new ForbiddenException("Solo los clientes pueden consultar su historial de pedidos.");
+        }
+        return actor;
+    }
+
     public User requireEncargada(AuthenticatedUser authenticatedUser) {
         User actor = requireActiveUser(authenticatedUser);
         if (actor.rol() != UserRole.ENCARGADA) {

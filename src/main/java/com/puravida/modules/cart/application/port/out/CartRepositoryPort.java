@@ -8,6 +8,8 @@ public interface CartRepositoryPort {
 
     List<CartItem> findByUserId(Integer userId);
 
+    List<CartItem> findByUserIdForUpdate(Integer userId);
+
     Optional<CartItem> findById(Integer cartItemId);
 
     Optional<CartItem> findByUserIdAndDishId(Integer userId, Integer dishId);
@@ -15,4 +17,6 @@ public interface CartRepositoryPort {
     CartItem save(CartItem cartItem);
 
     void deleteById(Integer cartItemId);
+
+    void deleteByUserId(Integer userId);
 }

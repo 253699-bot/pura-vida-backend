@@ -2,8 +2,10 @@ package com.puravida.modules.users.infrastructure.repository;
 
 import com.puravida.modules.users.application.port.out.UserRepositoryPort;
 import com.puravida.modules.users.domain.model.User;
+import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.modules.users.infrastructure.persistence.UserEntity;
 import com.puravida.modules.users.infrastructure.persistence.UserJpaRepository;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
@@ -22,8 +24,20 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public Optional<User> findByIdForUpdate(Integer id) {
+        return userJpaRepository.findByIdForUpdate(id).map(UserEntity::toDomain);
+    }
+
+    @Override
     public Optional<User> findByCorreo(String correo) {
         return userJpaRepository.findByCorreo(correo).map(UserEntity::toDomain);
+    }
+
+    @Override
+    public List<User> findActiveWithNotificationsByRole(UserRole role) {
+        return userJpaRepository.findByRolAndActivoTrueAndNotificacionesActivasTrue(role).stream()
+                .map(UserEntity::toDomain)
+                .toList();
     }
 
     @Override

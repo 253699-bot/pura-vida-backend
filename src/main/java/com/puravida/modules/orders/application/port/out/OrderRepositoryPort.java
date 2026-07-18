@@ -14,6 +14,8 @@ public interface OrderRepositoryPort {
 
     Optional<Order> findById(Integer orderId);
 
+    Optional<Order> findByIdAndClientId(Integer orderId, Integer clientId);
+
     Optional<Order> findByIdForUpdate(Integer orderId);
 
     List<OrderItem> findItemsByOrderId(Integer orderId);

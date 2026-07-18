@@ -31,4 +31,20 @@ public record User(
                 null
         );
     }
+
+    public User updateProfile(String nombre, String telefono) {
+        return new User(
+                id,
+                nombre,
+                correo,
+                telefono,
+                passwordHash,
+                rol,
+                iconoPerfil,
+                notificacionesActivas,
+                activo,
+                creadoEn,
+                LocalDateTime.now()
+        );
+    }
 }
