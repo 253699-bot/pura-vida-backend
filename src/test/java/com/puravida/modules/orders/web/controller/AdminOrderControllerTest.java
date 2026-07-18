@@ -16,12 +16,15 @@ import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.dto.OrderSummaryResponse;
 import com.puravida.modules.orders.application.dto.RejectOrderRequest;
 import com.puravida.modules.orders.application.port.in.AcceptOrderPort;
+import com.puravida.modules.orders.application.port.in.CompleteOrderPort;
 import com.puravida.modules.orders.application.port.in.GetAdminOrdersPort;
 import com.puravida.modules.orders.application.port.in.RejectOrderPort;
 import com.puravida.modules.orders.domain.model.Order;
 import com.puravida.modules.orders.domain.model.OrderStatus;
 import com.puravida.modules.users.domain.model.UserRole;
+import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.ForbiddenException;
+import com.puravida.shared.domain.exception.NotFoundException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
 import com.puravida.shared.web.GlobalExceptionHandler;
 import java.math.BigDecimal;
@@ -56,6 +59,9 @@ class AdminOrderControllerTest {
 
     @MockitoBean
     private RejectOrderPort rejectOrderPort;
+
+    @MockitoBean
+    private CompleteOrderPort completeOrderPort;
 
     @MockitoBean
     private AuthenticateBearerTokenPort authenticateBearerTokenPort;
@@ -101,6 +107,47 @@ class AdminOrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.estado", is("rechazado")))
                 .andExpect(jsonPath("$.data.motivoRechazo", is("No hay tortillas")));
+    }
+
+    @Test
+    void completesAcceptedOrderForEncargada() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        OrderResponse response = orderResponse(OrderStatus.FINALIZADO, null);
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(completeOrderPort.complete(10, encargada)).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/admin/orders/10/complete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado", is("finalizado")));
+    }
+
+    @Test
+    void completeReturnsConflictForInvalidTransition() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(completeOrderPort.complete(10, encargada))
+                .thenThrow(new ConflictException("Solo los pedidos aceptados pueden finalizarse."));
+
+        mockMvc.perform(patch("/api/v1/admin/orders/10/complete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status", is("ERROR")))
+                .andExpect(jsonPath("$.message", is("Solo los pedidos aceptados pueden finalizarse.")));
+    }
+
+    @Test
+    void completeReturnsNotFoundForMissingOrder() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(completeOrderPort.complete(999, encargada))
+                .thenThrow(new NotFoundException("No se encontro el pedido."));
+
+        mockMvc.perform(patch("/api/v1/admin/orders/999/complete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is("ERROR")))
+                .andExpect(jsonPath("$.message", is("No se encontro el pedido.")));
     }
 
     @Test

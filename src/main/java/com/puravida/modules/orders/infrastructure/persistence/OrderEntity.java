@@ -33,7 +33,8 @@ public class OrderEntity {
     private LocalTime hora;
 
     @Convert(converter = OrderStatusConverter.class)
-    @Column(name = "Estado", nullable = false, columnDefinition = "ENUM('pendiente','aceptado','rechazado','cancelado')")
+    @Column(name = "Estado", nullable = false,
+            columnDefinition = "ENUM('pendiente','aceptado','finalizado','rechazado','cancelado')")
     private OrderStatus estado;
 
     @Column(name = "Total", nullable = false, precision = 10, scale = 2)

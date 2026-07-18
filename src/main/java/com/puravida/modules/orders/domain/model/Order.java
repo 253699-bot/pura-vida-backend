@@ -76,4 +76,21 @@ public record Order(
                 creadoEn
         );
     }
+
+    public Order complete() {
+        return new Order(
+                id,
+                clienteId,
+                fecha,
+                hora,
+                OrderStatus.FINALIZADO,
+                total,
+                tiempoEsperaEstimado,
+                motivoRechazo,
+                respondidoPor,
+                respondidoEn,
+                observaciones,
+                creadoEn
+        );
+    }
 }
