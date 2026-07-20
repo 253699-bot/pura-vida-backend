@@ -134,7 +134,7 @@ class CompleteOrderUseCaseTest {
 
     @Test
     void rejectsRejectedOrder() {
-        assertInvalidTransition(TestOrderData.pendingOrder().reject(2, "Sin existencias"));
+        assertInvalidTransition(TestOrderData.pendingOrder().reject(2, "otro", "Sin existencias"));
     }
 
     @Test

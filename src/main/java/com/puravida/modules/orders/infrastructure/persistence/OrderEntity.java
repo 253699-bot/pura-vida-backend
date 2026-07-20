@@ -46,6 +46,10 @@ public class OrderEntity {
     @Column(name = "Motivo_rechazo", columnDefinition = "TEXT")
     private String motivoRechazo;
 
+    @Column(name = "Categoria_rechazo",
+            columnDefinition = "ENUM('platillo_agotado','fonda_cerrada','pedido_fuera_de_horario','cantidad_no_disponible','otro')")
+    private String categoriaRechazo;
+
     @Column(name = "Respondido_por")
     private Integer respondidoPor;
 
@@ -76,6 +80,7 @@ public class OrderEntity {
             BigDecimal total,
             String tiempoEsperaEstimado,
             String motivoRechazo,
+            String categoriaRechazo,
             Integer respondidoPor,
             LocalDateTime respondidoEn,
             Integer canceladoPor,
@@ -91,6 +96,7 @@ public class OrderEntity {
         this.total = total;
         this.tiempoEsperaEstimado = tiempoEsperaEstimado;
         this.motivoRechazo = motivoRechazo;
+        this.categoriaRechazo = categoriaRechazo;
         this.respondidoPor = respondidoPor;
         this.respondidoEn = respondidoEn;
         this.canceladoPor = canceladoPor;
@@ -109,6 +115,7 @@ public class OrderEntity {
                 order.total(),
                 order.tiempoEsperaEstimado(),
                 order.motivoRechazo(),
+                order.categoriaRechazo(),
                 order.respondidoPor(),
                 order.respondidoEn(),
                 order.canceladoPor(),
@@ -128,6 +135,7 @@ public class OrderEntity {
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 respondidoPor,
                 respondidoEn,
                 canceladoPor,

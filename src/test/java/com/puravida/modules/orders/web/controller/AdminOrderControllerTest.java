@@ -173,10 +173,11 @@ class AdminOrderControllerTest {
         mockMvc.perform(patch("/api/v1/admin/orders/10/reject")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RejectOrderRequest("No hay tortillas"))))
+                        .content(objectMapper.writeValueAsString(new RejectOrderRequest("otro", "No hay tortillas"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.estado", is("rechazado")))
-                .andExpect(jsonPath("$.data.motivoRechazo", is("No hay tortillas")));
+                .andExpect(jsonPath("$.data.motivoRechazo", is("No hay tortillas")))
+                .andExpect(jsonPath("$.data.categoriaRechazo", is("otro")));
     }
 
     @Test
@@ -265,6 +266,7 @@ class AdminOrderControllerTest {
                 null,
                 null,
                 null,
+                null,
                 "Sin cebolla",
                 LocalDateTime.of(2026, 7, 10, 12, 0)
         );
@@ -282,6 +284,7 @@ class AdminOrderControllerTest {
                 order.total(),
                 order.observaciones(),
                 motivoRechazo,
+                status == OrderStatus.RECHAZADO ? "otro" : null,
                 status == OrderStatus.PENDIENTE ? null : 2,
                 status == OrderStatus.PENDIENTE ? null : LocalDateTime.of(2026, 7, 10, 12, 5),
                 status == OrderStatus.PENDIENTE ? null : "25 minutos",

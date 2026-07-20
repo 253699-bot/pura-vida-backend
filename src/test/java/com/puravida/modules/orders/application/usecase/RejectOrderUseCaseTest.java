@@ -16,6 +16,8 @@ import com.puravida.modules.orders.domain.model.OrderStatus;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -41,8 +43,8 @@ class RejectOrderUseCaseTest {
     private RejectOrderUseCase useCase;
 
     @Test
-    void rejectsPendingOrderWithReason() {
-        Order rejected = TestOrderData.pendingOrder().reject(2, "No hay tortillas disponibles");
+    void rejectsPendingOrderWithOtherReason() {
+        Order rejected = TestOrderData.pendingOrder().reject(2, "otro", "No hay tortillas disponibles");
         OrderResponse expected = OrderResponse.from(rejected, "Cliente Prueba", List.of(TestOrderData.orderItem()));
         when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
         when(orderRepositoryPort.findByIdForUpdate(10)).thenReturn(Optional.of(TestOrderData.pendingOrder()));
@@ -52,24 +54,77 @@ class RejectOrderUseCaseTest {
 
         assertThat(useCase.reject(
                 10,
-                new RejectOrderRequest(" No hay tortillas disponibles "),
+                new RejectOrderRequest("otro", " No hay tortillas disponibles "),
                 TestOrderData.authenticatedEncargada()
         )).isSameAs(expected);
 
         ArgumentCaptor<Order> savedOrder = ArgumentCaptor.forClass(Order.class);
         verify(orderRepositoryPort).save(savedOrder.capture());
         assertThat(savedOrder.getValue().estado()).isEqualTo(OrderStatus.RECHAZADO);
+        assertThat(savedOrder.getValue().categoriaRechazo()).isEqualTo("otro");
         assertThat(savedOrder.getValue().motivoRechazo()).isEqualTo("No hay tortillas disponibles");
-        verify(orderNotificationPort).notifyOrderRejected(10, 1, "No hay tortillas disponibles");
+        verify(orderNotificationPort).notifyOrderRejected(10, 1, "otro", "No hay tortillas disponibles");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "platillo_agotado",
+            "fonda_cerrada",
+            "pedido_fuera_de_horario",
+            "cantidad_no_disponible"
+    })
+    void rejectsPendingOrderWithKnownCategoryWithoutReason(String category) {
+        Order rejected = TestOrderData.pendingOrder().reject(2, category, null);
+        OrderResponse expected = OrderResponse.from(rejected, "Cliente Prueba", List.of(TestOrderData.orderItem()));
+        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
+        when(orderRepositoryPort.findByIdForUpdate(10)).thenReturn(Optional.of(TestOrderData.pendingOrder()));
+        when(orderRepositoryPort.save(any(Order.class))).thenReturn(rejected);
+        when(orderRepositoryPort.findItemsByOrderId(10)).thenReturn(List.of(TestOrderData.orderItem()));
+        when(responseAssembler.detail(rejected, List.of(TestOrderData.orderItem()))).thenReturn(expected);
+
+        assertThat(useCase.reject(
+                10,
+                new RejectOrderRequest(category, null),
+                TestOrderData.authenticatedEncargada()
+        )).isSameAs(expected);
+
+        ArgumentCaptor<Order> savedOrder = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepositoryPort).save(savedOrder.capture());
+        assertThat(savedOrder.getValue().estado()).isEqualTo(OrderStatus.RECHAZADO);
+        assertThat(savedOrder.getValue().categoriaRechazo()).isEqualTo(category);
+        assertThat(savedOrder.getValue().motivoRechazo()).isNull();
+        verify(orderNotificationPort).notifyOrderRejected(10, 1, category, null);
     }
 
     @Test
-    void requiresRejectReason() {
+    void requiresRejectReasonForOtherCategory() {
         when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
 
         assertThatThrownBy(() -> useCase.reject(
                 10,
-                new RejectOrderRequest(" "),
+                new RejectOrderRequest("otro", " "),
+                TestOrderData.authenticatedEncargada()
+        )).isInstanceOf(OrderValidationException.class);
+    }
+
+    @Test
+    void requiresRejectCategory() {
+        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
+
+        assertThatThrownBy(() -> useCase.reject(
+                10,
+                new RejectOrderRequest(" ", null),
+                TestOrderData.authenticatedEncargada()
+        )).isInstanceOf(OrderValidationException.class);
+    }
+
+    @Test
+    void rejectsUnknownCategory() {
+        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
+
+        assertThatThrownBy(() -> useCase.reject(
+                10,
+                new RejectOrderRequest("sin_stock", null),
                 TestOrderData.authenticatedEncargada()
         )).isInstanceOf(OrderValidationException.class);
     }

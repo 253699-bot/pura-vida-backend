@@ -8,10 +8,19 @@ import com.puravida.modules.users.application.port.out.UserRepositoryPort;
 import com.puravida.modules.users.domain.model.User;
 import com.puravida.modules.users.domain.model.UserRole;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 @Service
 public class OrderNotificationUseCase implements OrderNotificationPort {
+
+    private static final Map<String, String> REJECTION_CATEGORY_LABELS = Map.of(
+            "platillo_agotado", "Platillo agotado",
+            "fonda_cerrada", "Fonda cerrada",
+            "pedido_fuera_de_horario", "Pedido fuera de horario",
+            "cantidad_no_disponible", "Cantidad no disponible",
+            "otro", "Otro"
+    );
 
     private final NotificationRepositoryPort notificationRepositoryPort;
     private final UserRepositoryPort userRepositoryPort;
@@ -54,10 +63,11 @@ public class OrderNotificationUseCase implements OrderNotificationPort {
     }
 
     @Override
-    public void notifyOrderRejected(Integer orderId, Integer clientId, String reason) {
+    public void notifyOrderRejected(Integer orderId, Integer clientId, String category, String reason) {
         String message = "Tu pedido #" + orderId + " fue rechazado.";
-        if (reason != null && !reason.isBlank()) {
-            message += " Motivo: " + reason.trim();
+        String visibleReason = rejectionReasonFor(category, reason);
+        if (!visibleReason.isBlank()) {
+            message += " Motivo: " + visibleReason;
         }
         notifyClient(
                 clientId,
@@ -77,6 +87,13 @@ public class OrderNotificationUseCase implements OrderNotificationPort {
                 "Pedido cancelado",
                 "Tu pedido #" + orderId + " fue cancelado por la fonda. Revisa el detalle para ver el estado actualizado."
         );
+    }
+
+    private String rejectionReasonFor(String category, String reason) {
+        if ("otro".equals(category) && reason != null && !reason.isBlank()) {
+            return reason.trim();
+        }
+        return REJECTION_CATEGORY_LABELS.getOrDefault(category, "");
     }
 
     private void notifyClient(

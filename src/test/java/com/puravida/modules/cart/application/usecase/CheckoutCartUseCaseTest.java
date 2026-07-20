@@ -198,6 +198,7 @@ class CheckoutCartUseCaseTest {
                 null,
                 null,
                 null,
+                null,
                 List.of()
         );
     }

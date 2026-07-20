@@ -63,6 +63,7 @@ final class TestOrderData {
                 null,
                 null,
                 null,
+                null,
                 "Sin cebolla",
                 LocalDateTime.of(2026, 7, 10, 12, 0)
         );
@@ -78,6 +79,7 @@ final class TestOrderData {
                 OrderStatus.ACEPTADO,
                 order.total(),
                 "25 minutos",
+                null,
                 null,
                 2,
                 LocalDateTime.of(2026, 7, 10, 12, 5),

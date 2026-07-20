@@ -14,6 +14,7 @@ public record Order(
         BigDecimal total,
         String tiempoEsperaEstimado,
         String motivoRechazo,
+        String categoriaRechazo,
         Integer respondidoPor,
         LocalDateTime respondidoEn,
         Integer canceladoPor,
@@ -42,6 +43,7 @@ public record Order(
                 null,
                 null,
                 null,
+                null,
                 observaciones,
                 LocalDateTime.now()
         );
@@ -57,6 +59,7 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 null,
+                null,
                 encargadoId,
                 LocalDateTime.now(),
                 null,
@@ -66,7 +69,7 @@ public record Order(
         );
     }
 
-    public Order reject(Integer encargadoId, String motivoRechazo) {
+    public Order reject(Integer encargadoId, String categoriaRechazo, String motivoRechazo) {
         return new Order(
                 id,
                 clienteId,
@@ -76,6 +79,7 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 encargadoId,
                 LocalDateTime.now(),
                 null,
@@ -95,6 +99,7 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 respondidoPor,
                 respondidoEn,
                 canceladoPor,
@@ -114,6 +119,7 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 respondidoPor,
                 respondidoEn,
                 encargadoId,
