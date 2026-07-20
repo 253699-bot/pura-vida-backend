@@ -12,11 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.auth.application.port.in.AuthenticateBearerTokenPort;
+import com.puravida.modules.orders.application.dto.AcceptOrderRequest;
 import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.dto.OrderSummaryResponse;
 import com.puravida.modules.orders.application.dto.RejectOrderRequest;
 import com.puravida.modules.orders.application.port.in.AcceptOrderPort;
+import com.puravida.modules.orders.application.port.in.CancelOrderPort;
 import com.puravida.modules.orders.application.port.in.CompleteOrderPort;
+import com.puravida.modules.orders.application.port.in.GetAdminOrderDetailPort;
 import com.puravida.modules.orders.application.port.in.GetAdminOrdersPort;
 import com.puravida.modules.orders.application.port.in.RejectOrderPort;
 import com.puravida.modules.orders.domain.model.Order;
@@ -55,6 +58,9 @@ class AdminOrderControllerTest {
     private GetAdminOrdersPort getAdminOrdersPort;
 
     @MockitoBean
+    private GetAdminOrderDetailPort getAdminOrderDetailPort;
+
+    @MockitoBean
     private AcceptOrderPort acceptOrderPort;
 
     @MockitoBean
@@ -64,13 +70,16 @@ class AdminOrderControllerTest {
     private CompleteOrderPort completeOrderPort;
 
     @MockitoBean
+    private CancelOrderPort cancelOrderPort;
+
+    @MockitoBean
     private AuthenticateBearerTokenPort authenticateBearerTokenPort;
 
     @Test
     void listsOrdersForEncargadaWithStatusFilter() throws Exception {
         AuthenticatedUser encargada = encargada();
         when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
-        when(getAdminOrdersPort.getOrders("pendiente", encargada))
+        when(getAdminOrdersPort.getOrders("pendiente", false, false, encargada))
                 .thenReturn(List.of(OrderSummaryResponse.from(pendingOrder(), "Cliente Prueba")));
 
         mockMvc.perform(get("/api/v1/admin/orders?estado=pendiente")
@@ -81,16 +90,77 @@ class AdminOrderControllerTest {
     }
 
     @Test
+    void listsHistoricalOrdersForEncargada() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(getAdminOrdersPort.getOrders(null, false, true, encargada))
+                .thenReturn(List.of(OrderSummaryResponse.from(pendingOrder().complete(), "Cliente Prueba")));
+
+        mockMvc.perform(get("/api/v1/admin/orders?historyOnly=true")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].estado", is("finalizado")));
+    }
+
+    @Test
     void acceptsOrderForEncargada() throws Exception {
         AuthenticatedUser encargada = encargada();
         OrderResponse response = orderResponse(OrderStatus.ACEPTADO, null);
         when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
-        when(acceptOrderPort.accept(10, encargada)).thenReturn(response);
+        when(acceptOrderPort.accept(eq(10), any(AcceptOrderRequest.class), eq(encargada)))
+                .thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/admin/orders/10/accept")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new AcceptOrderRequest("25 minutos")
+                        )))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado", is("aceptado")))
+                .andExpect(jsonPath("$.data.tiempoEsperaEstimado", is("25 minutos")));
+    }
+
+    @Test
+    void getsAdminOrderDetail() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        OrderResponse response = orderResponse(OrderStatus.ACEPTADO, null);
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(getAdminOrderDetailPort.getOrder(10, encargada)).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/admin/orders/10")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.estado", is("aceptado")));
+                .andExpect(jsonPath("$.data.id", is(10)))
+                .andExpect(jsonPath("$.data.tiempoEsperaEstimado", is("25 minutos")));
+    }
+
+    @Test
+    void cancelsAcceptedOrderWithoutRequestBody() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        OrderResponse response = orderResponse(OrderStatus.CANCELADO, null);
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(cancelOrderPort.cancel(10, encargada)).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/admin/orders/10/cancel")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.estado", is("cancelado")))
+                .andExpect(jsonPath("$.data.canceladoPor", is(2)));
+    }
+
+    @Test
+    void acceptRejectsEstimatedWaitLongerThanOneHundredCharacters() throws Exception {
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada());
+
+        mockMvc.perform(patch("/api/v1/admin/orders/10/accept")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new AcceptOrderRequest("x".repeat(101))
+                        )))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.tiempoEsperaEstimado").exists());
     }
 
     @Test
@@ -164,11 +234,15 @@ class AdminOrderControllerTest {
     void acceptReturnsForbiddenForClientRole() throws Exception {
         AuthenticatedUser client = new AuthenticatedUser(1, "cliente@example.com", UserRole.CLIENTE);
         when(authenticateBearerTokenPort.authenticate("Bearer client-token")).thenReturn(client);
-        when(acceptOrderPort.accept(10, client))
+        when(acceptOrderPort.accept(eq(10), any(AcceptOrderRequest.class), eq(client)))
                 .thenThrow(new ForbiddenException("No tienes permisos para administrar pedidos."));
 
         mockMvc.perform(patch("/api/v1/admin/orders/10/accept")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer client-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new AcceptOrderRequest("25 minutos")
+                        )))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status", is("ERROR")));
     }
@@ -185,6 +259,8 @@ class AdminOrderControllerTest {
                 LocalTime.of(12, 0),
                 OrderStatus.PENDIENTE,
                 new BigDecimal("130.00"),
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -208,6 +284,9 @@ class AdminOrderControllerTest {
                 motivoRechazo,
                 status == OrderStatus.PENDIENTE ? null : 2,
                 status == OrderStatus.PENDIENTE ? null : LocalDateTime.of(2026, 7, 10, 12, 5),
+                status == OrderStatus.PENDIENTE ? null : "25 minutos",
+                status == OrderStatus.CANCELADO ? 2 : null,
+                status == OrderStatus.CANCELADO ? LocalDateTime.of(2026, 7, 10, 12, 15) : null,
                 List.of()
         );
     }

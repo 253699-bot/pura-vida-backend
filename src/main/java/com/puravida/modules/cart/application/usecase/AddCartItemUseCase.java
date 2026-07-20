@@ -10,6 +10,7 @@ import com.puravida.modules.cart.domain.exception.CartValidationException;
 import com.puravida.modules.cart.domain.model.CartDish;
 import com.puravida.modules.cart.domain.model.CartItem;
 import com.puravida.modules.users.domain.model.User;
+import com.puravida.modules.orders.domain.model.OrderableMenuItem;
 import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -22,24 +23,28 @@ public class AddCartItemUseCase implements AddCartItemPort {
     private final CartDishRepositoryPort cartDishRepositoryPort;
     private final CartAuthorizationService authorizationService;
     private final CartResponseAssembler responseAssembler;
+    private final CartSellabilityService sellabilityService;
 
     public AddCartItemUseCase(
             CartRepositoryPort cartRepositoryPort,
             CartDishRepositoryPort cartDishRepositoryPort,
             CartAuthorizationService authorizationService,
-            CartResponseAssembler responseAssembler
+            CartResponseAssembler responseAssembler,
+            CartSellabilityService sellabilityService
     ) {
         this.cartRepositoryPort = cartRepositoryPort;
         this.cartDishRepositoryPort = cartDishRepositoryPort;
         this.authorizationService = authorizationService;
         this.responseAssembler = responseAssembler;
+        this.sellabilityService = sellabilityService;
     }
 
     @Override
     @Transactional
     public CartItemResponse add(AddCartItemRequest request, AuthenticatedUser authenticatedUser) {
         validate(request);
-        User user = authorizationService.requireActiveUser(authenticatedUser);
+        User user = authorizationService.requireClient(authenticatedUser);
+        OrderableMenuItem menuItem = sellabilityService.requireSellableDish(request.dishId());
         CartDish dish = cartDishRepositoryPort.findById(request.dishId())
                 .orElseThrow(() -> new NotFoundException("Platillo no encontrado."));
         if (!dish.activo()) {
@@ -47,10 +52,26 @@ public class AddCartItemUseCase implements AddCartItemPort {
         }
 
         CartItem item = cartRepositoryPort.findByUserIdAndDishId(user.id(), dish.id())
-                .map(existing -> existing.withCantidad(existing.cantidad() + request.cantidad()))
-                .orElseGet(() -> CartItem.create(user.id(), dish.id(), request.cantidad(), dish.precioBase()));
+                .map(existing -> existing.withCantidadAndPrecio(
+                        safeAdd(existing.cantidad(), request.cantidad()),
+                        menuItem.precioDia()
+                ))
+                .orElseGet(() -> CartItem.create(
+                        user.id(),
+                        dish.id(),
+                        request.cantidad(),
+                        menuItem.precioDia()
+                ));
         CartItem savedItem = cartRepositoryPort.save(item);
         return responseAssembler.item(savedItem, dish);
+    }
+
+    private int safeAdd(int currentQuantity, int requestedQuantity) {
+        try {
+            return Math.addExact(currentQuantity, requestedQuantity);
+        } catch (ArithmeticException exception) {
+            throw new CartValidationException("La cantidad solicitada es demasiado grande.");
+        }
     }
 
     private void validate(AddCartItemRequest request) {

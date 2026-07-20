@@ -8,6 +8,18 @@ public record CartItemResponse(
         String nombre,
         int cantidad,
         BigDecimal precioUnitario,
-        BigDecimal subtotal
+        BigDecimal subtotal,
+        String imagenUrl
 ) {
+
+    public CartItemResponse(
+            Integer id,
+            Integer dishId,
+            String nombre,
+            int cantidad,
+            BigDecimal precioUnitario,
+            BigDecimal subtotal
+    ) {
+        this(id, dishId, nombre, cantidad, precioUnitario, subtotal, null);
+    }
 }

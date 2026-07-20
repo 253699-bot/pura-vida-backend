@@ -10,10 +10,12 @@ import static org.mockito.Mockito.when;
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.users.application.dto.UpdateMyProfileRequest;
 import com.puravida.modules.users.application.dto.UserProfileResponse;
+import com.puravida.modules.users.application.port.out.BusinessContactSynchronizationPort;
 import com.puravida.modules.users.application.port.out.UserRepositoryPort;
 import com.puravida.modules.users.domain.exception.UserProfileValidationException;
 import com.puravida.modules.users.domain.model.User;
 import com.puravida.modules.users.domain.model.UserRole;
+import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.ForbiddenException;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -30,6 +32,9 @@ class UserProfileUseCasesTest {
     @Mock
     private UserRepositoryPort userRepositoryPort;
 
+    @Mock
+    private BusinessContactSynchronizationPort contactSynchronizationPort;
+
     private GetMyProfileUseCase getUseCase;
     private UpdateMyProfileUseCase updateUseCase;
 
@@ -38,7 +43,11 @@ class UserProfileUseCasesTest {
         UserProfileAuthorizationService authorizationService =
                 new UserProfileAuthorizationService(userRepositoryPort);
         getUseCase = new GetMyProfileUseCase(authorizationService);
-        updateUseCase = new UpdateMyProfileUseCase(userRepositoryPort, authorizationService);
+        updateUseCase = new UpdateMyProfileUseCase(
+                userRepositoryPort,
+                authorizationService,
+                contactSynchronizationPort
+        );
     }
 
     @Test
@@ -78,21 +87,21 @@ class UserProfileUseCasesTest {
     }
 
     @Test
-    void rejectsRoleEmailOrPasswordChanges() {
+    void rejectsRoleOrPasswordChanges() {
         when(userRepositoryPort.findByIdForUpdate(7)).thenReturn(Optional.of(activeClient()));
 
         assertThatThrownBy(() -> updateUseCase.update(
                 new UpdateMyProfileRequest(
                         "Ana Maria",
                         null,
-                        "otro@example.com",
+                        null,
                         "encargada",
                         "new-password"
                 ),
                 authenticatedClient()
         ))
                 .isInstanceOf(UserProfileValidationException.class)
-                .hasMessage("Solo se permite actualizar nombre y telefono.");
+                .hasMessage("No se permite actualizar rol o password desde este endpoint.");
 
         verify(userRepositoryPort, never()).save(any());
     }
@@ -119,9 +128,57 @@ class UserProfileUseCasesTest {
                 authenticatedClient()
         ))
                 .isInstanceOf(UserProfileValidationException.class)
-                .hasMessage("Debes enviar nombre o telefono para actualizar el perfil.");
+                .hasMessage("Debes enviar nombre, correo o telefono para actualizar el perfil.");
 
         verify(userRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void normalizesAndUpdatesClientsEmailWithoutSynchronizingPublicContact() {
+        when(userRepositoryPort.findByIdForUpdate(7)).thenReturn(Optional.of(activeClient()));
+        when(userRepositoryPort.existsByCorreoAndIdNot("ana.nueva@example.com", 7)).thenReturn(false);
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserProfileResponse response = updateUseCase.update(
+                new UpdateMyProfileRequest(null, null, " ANA.NUEVA@EXAMPLE.COM ", null, null),
+                authenticatedClient()
+        );
+
+        assertThat(response.correo()).isEqualTo("ana.nueva@example.com");
+        verify(contactSynchronizationPort, never()).synchronize(any(), any(), any());
+    }
+
+    @Test
+    void rejectsEmailOwnedByAnotherUser() {
+        when(userRepositoryPort.findByIdForUpdate(7)).thenReturn(Optional.of(activeClient()));
+        when(userRepositoryPort.existsByCorreoAndIdNot("ocupado@example.com", 7)).thenReturn(true);
+
+        assertThatThrownBy(() -> updateUseCase.update(
+                new UpdateMyProfileRequest(null, null, "ocupado@example.com", null, null),
+                authenticatedClient()
+        ))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("El correo ya esta registrado.");
+
+        verify(userRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void synchronizesEncargadasChangedContactInsideProfileUpdate() {
+        User current = activeEncargada();
+        AuthenticatedUser authenticated = new AuthenticatedUser(4, current.correo(), UserRole.ENCARGADA);
+        when(userRepositoryPort.findByIdForUpdate(4)).thenReturn(Optional.of(current));
+        when(userRepositoryPort.existsByCorreoAndIdNot("admin.nueva@example.com", 4)).thenReturn(false);
+        when(userRepositoryPort.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        updateUseCase.update(
+                new UpdateMyProfileRequest(null, "9619999999", "ADMIN.NUEVA@EXAMPLE.COM", null, null),
+                authenticated
+        );
+
+        verify(contactSynchronizationPort).synchronize(
+                "admin.nueva@example.com", "9619999999", 4
+        );
     }
 
     @Test
@@ -157,6 +214,22 @@ class UserProfileUseCasesTest {
                 "9610000000",
                 "bcrypt-hash",
                 UserRole.CLIENTE,
+                null,
+                true,
+                true,
+                LocalDateTime.of(2026, 7, 1, 10, 0),
+                null
+        );
+    }
+
+    private User activeEncargada() {
+        return new User(
+                4,
+                "Encargada",
+                "admin@example.com",
+                "9610000000",
+                "bcrypt-hash",
+                UserRole.ENCARGADA,
                 null,
                 true,
                 true,

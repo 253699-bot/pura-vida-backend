@@ -7,8 +7,13 @@ import com.puravida.modules.orders.application.port.out.OrderRepositoryPort;
 import com.puravida.modules.orders.domain.model.Order;
 import com.puravida.modules.orders.domain.model.OrderStatus;
 import com.puravida.modules.sales.application.port.out.SaleRepositoryPort;
+import com.puravida.modules.sales.domain.model.Sale;
+import com.puravida.modules.sales.domain.model.SaleSource;
+import com.puravida.modules.sales.domain.model.SaleStatus;
+import com.puravida.modules.users.domain.model.User;
 import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.NotFoundException;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,21 +40,46 @@ public class CompleteOrderUseCase implements CompleteOrderPort {
     @Override
     @Transactional
     public OrderResponse complete(Integer orderId, AuthenticatedUser authenticatedUser) {
-        authorizationService.requireEncargada(authenticatedUser);
+        User actor = authorizationService.requireEncargada(authenticatedUser);
         Order order = orderRepositoryPort.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new NotFoundException("No se encontro el pedido."));
+
+        if (order.estado() == OrderStatus.FINALIZADO) {
+            Sale sale = saleRepositoryPort.findByOrderIdForUpdate(order.id())
+                    .orElseThrow(() -> new ConflictException(
+                            "El pedido finalizado no tiene una venta remota asociada."
+                    ));
+            requireActiveRemoteSale(sale);
+            return detail(order);
+        }
 
         if (order.estado() != OrderStatus.ACEPTADO) {
             throw new ConflictException("Solo los pedidos aceptados pueden finalizarse.");
         }
-        if (!saleRepositoryPort.existsByOrderId(order.id())) {
-            throw new ConflictException("El pedido aceptado no tiene una venta asociada y no puede finalizarse.");
-        }
+
+        Optional<Sale> existingSale = saleRepositoryPort.findByOrderIdForUpdate(order.id());
+        existingSale.ifPresent(this::requireActiveRemoteSale);
 
         Order completedOrder = orderRepositoryPort.save(order.complete());
+        if (existingSale.isEmpty()) {
+            saleRepositoryPort.save(Sale.createRemote(completedOrder.id(), completedOrder.total(), actor.id()));
+        }
+        return detail(completedOrder);
+    }
+
+    private void requireActiveRemoteSale(Sale sale) {
+        if (sale.source() != SaleSource.REMOTA) {
+            throw new ConflictException("La venta asociada al pedido no es remota.");
+        }
+        if (sale.status() != SaleStatus.ACTIVA) {
+            throw new ConflictException("La venta remota asociada no esta activa.");
+        }
+    }
+
+    private OrderResponse detail(Order order) {
         return responseAssembler.detail(
-                completedOrder,
-                orderRepositoryPort.findItemsByOrderId(completedOrder.id())
+                order,
+                orderRepositoryPort.findItemsByOrderId(order.id())
         );
     }
 }

@@ -20,4 +20,8 @@ public record CartItem(
     public CartItem withCantidad(int nuevaCantidad) {
         return new CartItem(id, userId, dishId, nuevaCantidad, precioUnitario, creadoEn, LocalDateTime.now());
     }
+
+    public CartItem withCantidadAndPrecio(int nuevaCantidad, BigDecimal nuevoPrecio) {
+        return new CartItem(id, userId, dishId, nuevaCantidad, nuevoPrecio, creadoEn, LocalDateTime.now());
+    }
 }

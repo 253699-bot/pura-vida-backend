@@ -112,6 +112,22 @@ class MenuControllerTest {
     }
 
     @Test
+    void putTodayAllowsEmptyListToRetirePublishedMenu() throws Exception {
+        AuthenticatedUser authenticatedUser = authenticatedEncargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer test-token")).thenReturn(authenticatedUser);
+        when(updateTodayMenuPort.updateToday(any(UpdateTodayMenuRequest.class), eq(authenticatedUser)))
+                .thenReturn(TodayMenuResponse.notConfigured(LocalDate.of(2026, 7, 10)));
+
+        mockMvc.perform(put("/api/v1/menu/today")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateTodayMenuRequest(List.of()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.configured", is(false)))
+                .andExpect(jsonPath("$.data.items").isEmpty());
+    }
+
+    @Test
     void putTodayReturnsForbiddenForClientRole() throws Exception {
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(8, "cliente@example.com", UserRole.CLIENTE);
         when(authenticateBearerTokenPort.authenticate("Bearer test-token")).thenReturn(authenticatedUser);
@@ -197,6 +213,8 @@ class MenuControllerTest {
                 "Orden de tacos",
                 "platillo_fuerte",
                 new BigDecimal("65.00"),
+                null,
+                true,
                 disponible
         );
     }

@@ -10,7 +10,7 @@ import com.puravida.modules.cart.domain.exception.CartValidationException;
 import com.puravida.modules.cart.domain.model.CartDish;
 import com.puravida.modules.cart.domain.model.CartItem;
 import com.puravida.modules.users.domain.model.User;
-import com.puravida.shared.domain.exception.ForbiddenException;
+import com.puravida.modules.orders.domain.model.OrderableMenuItem;
 import com.puravida.shared.domain.exception.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +22,20 @@ public class UpdateCartItemQuantityUseCase implements UpdateCartItemQuantityPort
     private final CartDishRepositoryPort cartDishRepositoryPort;
     private final CartAuthorizationService authorizationService;
     private final CartResponseAssembler responseAssembler;
+    private final CartSellabilityService sellabilityService;
 
     public UpdateCartItemQuantityUseCase(
             CartRepositoryPort cartRepositoryPort,
             CartDishRepositoryPort cartDishRepositoryPort,
             CartAuthorizationService authorizationService,
-            CartResponseAssembler responseAssembler
+            CartResponseAssembler responseAssembler,
+            CartSellabilityService sellabilityService
     ) {
         this.cartRepositoryPort = cartRepositoryPort;
         this.cartDishRepositoryPort = cartDishRepositoryPort;
         this.authorizationService = authorizationService;
         this.responseAssembler = responseAssembler;
+        this.sellabilityService = sellabilityService;
     }
 
     @Override
@@ -45,19 +48,15 @@ public class UpdateCartItemQuantityUseCase implements UpdateCartItemQuantityPort
         if (request == null || request.cantidad() == null || request.cantidad() <= 0) {
             throw new CartValidationException("La cantidad debe ser mayor a cero.");
         }
-        User user = authorizationService.requireActiveUser(authenticatedUser);
-        CartItem item = cartRepositoryPort.findById(cartItemId)
+        User user = authorizationService.requireClient(authenticatedUser);
+        CartItem item = cartRepositoryPort.findByIdAndUserId(cartItemId, user.id())
                 .orElseThrow(() -> new NotFoundException("Item de carrito no encontrado."));
-        verifyOwnership(item, user);
+        OrderableMenuItem menuItem = sellabilityService.requireSellableDish(item.dishId());
         CartDish dish = cartDishRepositoryPort.findById(item.dishId())
                 .orElseThrow(() -> new NotFoundException("Platillo no encontrado."));
-        CartItem savedItem = cartRepositoryPort.save(item.withCantidad(request.cantidad()));
+        CartItem savedItem = cartRepositoryPort.save(
+                item.withCantidadAndPrecio(request.cantidad(), menuItem.precioDia())
+        );
         return responseAssembler.item(savedItem, dish);
-    }
-
-    private void verifyOwnership(CartItem item, User user) {
-        if (!item.userId().equals(user.id())) {
-            throw new ForbiddenException("No tienes permisos para modificar este item de carrito.");
-        }
     }
 }

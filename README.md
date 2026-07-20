@@ -4,11 +4,11 @@ API REST del MVP PuraVida, preparada como monolito modular con arquitectura hexa
 
 ## Requisitos
 
-- JDK 17 recomendado.
+- JDK 21.
 - Maven 3.8+.
 - MySQL para etapas futuras de integracion.
 
-El entorno local inspeccionado tiene JDK 21 y Maven 3.8.7; el proyecto compila usando `release` 17.
+El proyecto compila usando `release` 21.
 
 ## Ejecucion
 
@@ -38,6 +38,8 @@ Variables esperadas para una futura conexion a MySQL:
 - `PURAVIDA_DB_PASSWORD`
 - `JWT_SECRET`
 - `JWT_EXPIRATION_MINUTES`
+- `PURAVIDA_LOGO_STORAGE_ROOT`
+- `PURAVIDA_LOGO_MAX_BYTES`
 
 No se incluyen secretos ni credenciales reales. El usuario por defecto de ejemplo no es `root`.
 
@@ -83,7 +85,7 @@ La base de datos vive fuera de este backend, en `../pura-vida-database`.
 
 No se ejecutan migraciones desde este esqueleto inicial.
 
-La tabla `ventas_unificadas` no debe persistirse; las ventas consolidadas se obtendran posteriormente mediante consultas SQL/JOIN desde el backend.
+No se persiste una tabla auxiliar de consolidacion; las ventas consolidadas se obtienen mediante consultas SQL/JOIN desde el backend.
 
 ## Endpoint tecnico
 
@@ -182,9 +184,11 @@ Las respuestas no exponen `Password_hash`.
 ## Documentacion funcional
 
 - [Autenticacion y perfil propio](docs/endpoints/auth-profile.md)
+- [Configuracion publica del negocio](docs/endpoints/business-configuration.md)
 - [Reportes semanales JSON y PDF](docs/endpoints/reports.md)
 - [Demo E2E del MVP con Postman](docs/testing/mvp-e2e-postman.md)
 - [Historial de pedidos del cliente](docs/endpoints/orders.md)
 - [Carrito](docs/endpoints/cart.md)
 - [Catalogo de platillos](docs/endpoints/dishes.md)
+- [Menu diario](docs/endpoints/menu.md)
 - [Coleccion Postman](docs/postman/PuraVida.postman_collection.json)

@@ -4,20 +4,27 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.auth.application.port.in.AuthenticateBearerTokenPort;
+import com.puravida.modules.reports.application.dto.CreateWeeklyReportRequest;
 import com.puravida.modules.reports.application.dto.WeeklyReportOrdersSummary;
 import com.puravida.modules.reports.application.dto.WeeklyReportPdf;
 import com.puravida.modules.reports.application.dto.WeeklyReportSalesSummary;
 import com.puravida.modules.reports.application.dto.WeeklyReportSourceSummary;
 import com.puravida.modules.reports.application.dto.WeeklyReportSummary;
+import com.puravida.modules.reports.application.dto.WeeklyReportListItemResponse;
+import com.puravida.modules.reports.application.port.in.CreateWeeklyReportPort;
 import com.puravida.modules.reports.application.port.in.GenerateWeeklyReportPdfPort;
+import com.puravida.modules.reports.application.port.in.GenerateStoredWeeklyReportPdfPort;
 import com.puravida.modules.reports.application.port.in.GetWeeklyReportSummaryPort;
+import com.puravida.modules.reports.application.port.in.ListWeeklyReportsPort;
 import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ForbiddenException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
@@ -42,11 +49,23 @@ class AdminWeeklyReportControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockitoBean
     private GetWeeklyReportSummaryPort getWeeklyReportSummaryPort;
 
     @MockitoBean
     private GenerateWeeklyReportPdfPort generateWeeklyReportPdfPort;
+
+    @MockitoBean
+    private ListWeeklyReportsPort listWeeklyReportsPort;
+
+    @MockitoBean
+    private CreateWeeklyReportPort createWeeklyReportPort;
+
+    @MockitoBean
+    private GenerateStoredWeeklyReportPdfPort generateStoredWeeklyReportPdfPort;
 
     @MockitoBean
     private AuthenticateBearerTokenPort authenticateBearerTokenPort;
@@ -74,6 +93,52 @@ class AdminWeeklyReportControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
                         containsString("reporte-semanal-puravida-2026-07-06.pdf")));
+    }
+
+    @Test
+    void listsCreatesAndDownloadsStoredWeeklyReport() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        WeeklyReportListItemResponse item = new WeeklyReportListItemResponse(
+                12,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 12),
+                2,
+                new BigDecimal("300.00"),
+                8,
+                null,
+                1,
+                4,
+                LocalDateTime.of(2026, 7, 12, 18, 0),
+                true
+        );
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(listWeeklyReportsPort.list(encargada)).thenReturn(List.of(item));
+        when(createWeeklyReportPort.create(
+                new CreateWeeklyReportRequest("2026-07-06"), encargada
+        )).thenReturn(item);
+        when(generateStoredWeeklyReportPdfPort.generate(12, encargada))
+                .thenReturn(new WeeklyReportPdf("%PDF-stored".getBytes(), LocalDate.of(2026, 7, 6)));
+
+        mockMvc.perform(get("/api/v1/admin/reports/weekly")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id", is(12)))
+                .andExpect(jsonPath("$.data[0].snapshotDisponible", is(true)));
+
+        mockMvc.perform(post("/api/v1/admin/reports/weekly")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new CreateWeeklyReportRequest("2026-07-06")
+                        )))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id", is(12)));
+
+        mockMvc.perform(get("/api/v1/admin/reports/weekly/12/pdf")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+                .andExpect(content().bytes("%PDF-stored".getBytes()));
     }
 
     @Test
@@ -112,7 +177,7 @@ class AdminWeeklyReportControllerTest {
                         new WeeklyReportSourceSummary(1, new BigDecimal("100.00")),
                         new WeeklyReportSourceSummary(2, new BigDecimal("200.00"))
                 ),
-                new WeeklyReportOrdersSummary(2, 3, 1),
+                new WeeklyReportOrdersSummary(2, 3, 1, 0),
                 List.of()
         );
     }

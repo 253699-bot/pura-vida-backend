@@ -44,7 +44,7 @@ public class RejectOrderUseCase implements RejectOrderPort {
     ) {
         User actor = authorizationService.requireEncargada(authenticatedUser);
         String motivoRechazo = normalizeReason(request);
-        Order order = orderRepositoryPort.findById(orderId)
+        Order order = orderRepositoryPort.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new NotFoundException("No se encontro el pedido."));
         requirePending(order);
 

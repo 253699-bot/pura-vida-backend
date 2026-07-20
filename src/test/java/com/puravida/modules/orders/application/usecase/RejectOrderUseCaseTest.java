@@ -45,7 +45,7 @@ class RejectOrderUseCaseTest {
         Order rejected = TestOrderData.pendingOrder().reject(2, "No hay tortillas disponibles");
         OrderResponse expected = OrderResponse.from(rejected, "Cliente Prueba", List.of(TestOrderData.orderItem()));
         when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
-        when(orderRepositoryPort.findById(10)).thenReturn(Optional.of(TestOrderData.pendingOrder()));
+        when(orderRepositoryPort.findByIdForUpdate(10)).thenReturn(Optional.of(TestOrderData.pendingOrder()));
         when(orderRepositoryPort.save(any(Order.class))).thenReturn(rejected);
         when(orderRepositoryPort.findItemsByOrderId(10)).thenReturn(List.of(TestOrderData.orderItem()));
         when(responseAssembler.detail(rejected, List.of(TestOrderData.orderItem()))).thenReturn(expected);

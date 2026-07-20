@@ -3,6 +3,9 @@ package com.puravida.modules.sales.infrastructure.repository;
 import com.puravida.modules.sales.application.port.out.SaleRepositoryPort;
 import com.puravida.modules.sales.domain.model.Sale;
 import com.puravida.modules.sales.domain.model.SaleSearchCriteria;
+import com.puravida.modules.sales.domain.model.ManualSaleLine;
+import com.puravida.modules.sales.infrastructure.persistence.ManualSaleLineEntity;
+import com.puravida.modules.sales.infrastructure.persistence.ManualSaleLineJpaRepository;
 import com.puravida.modules.sales.infrastructure.persistence.SaleEntity;
 import com.puravida.modules.sales.infrastructure.persistence.SaleJpaRepository;
 import java.util.List;
@@ -15,9 +18,14 @@ import org.springframework.stereotype.Repository;
 public class SaleRepositoryAdapter implements SaleRepositoryPort {
 
     private final SaleJpaRepository saleJpaRepository;
+    private final ManualSaleLineJpaRepository lineJpaRepository;
 
-    public SaleRepositoryAdapter(SaleJpaRepository saleJpaRepository) {
+    public SaleRepositoryAdapter(
+            SaleJpaRepository saleJpaRepository,
+            ManualSaleLineJpaRepository lineJpaRepository
+    ) {
         this.saleJpaRepository = saleJpaRepository;
+        this.lineJpaRepository = lineJpaRepository;
     }
 
     @Override
@@ -31,13 +39,50 @@ public class SaleRepositoryAdapter implements SaleRepositoryPort {
     }
 
     @Override
+    public Optional<Sale> findByIdForUpdate(Integer saleId) {
+        return saleJpaRepository.findByIdForUpdate(saleId).map(SaleEntity::toDomain);
+    }
+
+    @Override
     public Optional<Sale> findByOrderId(Integer orderId) {
         return saleJpaRepository.findByOrderId(orderId).map(SaleEntity::toDomain);
     }
 
     @Override
+    public Optional<Sale> findByOrderIdForUpdate(Integer orderId) {
+        return saleJpaRepository.findByOrderIdForUpdate(orderId).map(SaleEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Sale> findByActorAndIdempotencyKey(Integer actorId, String idempotencyKey) {
+        return saleJpaRepository.findByRegistradoPorAndIdempotencyKey(actorId, idempotencyKey)
+                .map(SaleEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Sale> findByActorAndIdempotencyKeyForUpdate(Integer actorId, String idempotencyKey) {
+        return saleJpaRepository.findByActorAndIdempotencyKeyForUpdate(actorId, idempotencyKey)
+                .map(SaleEntity::toDomain);
+    }
+
+    @Override
     public boolean existsByOrderId(Integer orderId) {
         return saleJpaRepository.existsByOrderId(orderId);
+    }
+
+    @Override
+    public List<ManualSaleLine> saveLines(List<ManualSaleLine> lines) {
+        return lineJpaRepository.saveAll(lines.stream().map(ManualSaleLineEntity::fromDomain).toList())
+                .stream()
+                .map(ManualSaleLineEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<ManualSaleLine> findLinesBySaleId(Integer saleId) {
+        return lineJpaRepository.findBySaleIdOrderByIdAsc(saleId).stream()
+                .map(ManualSaleLineEntity::toDomain)
+                .toList();
     }
 
     @Override

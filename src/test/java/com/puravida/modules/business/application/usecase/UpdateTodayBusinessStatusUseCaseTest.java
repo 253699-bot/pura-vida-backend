@@ -10,8 +10,11 @@ import static org.mockito.Mockito.when;
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.business.application.dto.TodayBusinessStatusResponse;
 import com.puravida.modules.business.application.dto.UpdateTodayBusinessStatusRequest;
+import com.puravida.modules.business.application.port.out.ActiveBusinessOrdersPort;
 import com.puravida.modules.business.application.port.out.BusinessDayStatusRepositoryPort;
+import com.puravida.modules.business.domain.exception.ActiveOrdersPreventClosureException;
 import com.puravida.modules.business.domain.exception.BusinessStatusValidationException;
+import com.puravida.modules.business.domain.model.ActiveBusinessOrderCounts;
 import com.puravida.modules.business.domain.model.BusinessDayStatus;
 import com.puravida.modules.users.application.port.out.UserRepositoryPort;
 import com.puravida.modules.users.domain.model.User;
@@ -32,6 +35,9 @@ class UpdateTodayBusinessStatusUseCaseTest {
 
     @Mock
     private BusinessDayStatusRepositoryPort statusRepositoryPort;
+
+    @Mock
+    private ActiveBusinessOrdersPort activeBusinessOrdersPort;
 
     @Mock
     private UserRepositoryPort userRepositoryPort;
@@ -74,7 +80,8 @@ class UpdateTodayBusinessStatusUseCaseTest {
                     status.motivoCierre(),
                     status.registradoPor(),
                     status.creadoEn(),
-                    status.actualizadoEn()
+                    status.actualizadoEn(),
+                    status.cicloIniciadoEn()
             );
         });
 
@@ -120,6 +127,77 @@ class UpdateTodayBusinessStatusUseCaseTest {
         assertThat(response.abierto()).isTrue();
         assertThat(response.motivoCierre()).isNull();
         assertThat(response.actualizadoEn()).isNotNull();
+    }
+
+    @Test
+    void blocksClosingWhenCurrentCycleHasPendingOrders() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime cycleStartedAt = LocalDateTime.now().minusHours(4);
+        BusinessDayStatus currentStatus = openStatus(today, cycleStartedAt);
+        when(userRepositoryPort.findById(2)).thenReturn(Optional.of(encargadaUser()));
+        when(statusRepositoryPort.findByFecha(today)).thenReturn(Optional.of(currentStatus));
+        when(activeBusinessOrdersPort.countActiveSince(cycleStartedAt))
+                .thenReturn(new ActiveBusinessOrderCounts(1, 0));
+
+        assertThatThrownBy(() -> useCase.updateToday(
+                new UpdateTodayBusinessStatusRequest(false, "Fin de jornada"),
+                authenticatedEncargada()
+        ))
+                .isInstanceOf(ActiveOrdersPreventClosureException.class)
+                .hasMessage("No puedes cerrar la fonda mientras existan pedidos pendientes o aceptados.");
+
+        verify(statusRepositoryPort, never()).save(any(BusinessDayStatus.class));
+    }
+
+    @Test
+    void blocksClosingWhenCurrentCycleHasAcceptedOrders() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime cycleStartedAt = LocalDateTime.now().minusHours(4);
+        BusinessDayStatus currentStatus = openStatus(today, cycleStartedAt);
+        when(userRepositoryPort.findById(2)).thenReturn(Optional.of(encargadaUser()));
+        when(statusRepositoryPort.findByFecha(today)).thenReturn(Optional.of(currentStatus));
+        when(activeBusinessOrdersPort.countActiveSince(cycleStartedAt))
+                .thenReturn(new ActiveBusinessOrderCounts(0, 2));
+
+        assertThatThrownBy(() -> useCase.updateToday(
+                new UpdateTodayBusinessStatusRequest(false, "Fin de jornada"),
+                authenticatedEncargada()
+        )).isInstanceOf(ActiveOrdersPreventClosureException.class);
+
+        verify(statusRepositoryPort, never()).save(any(BusinessDayStatus.class));
+    }
+
+    @Test
+    void allowsClosingWhenCurrentCycleHasNoPendingOrAcceptedOrders() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime cycleStartedAt = LocalDateTime.now().minusHours(4);
+        BusinessDayStatus currentStatus = openStatus(today, cycleStartedAt);
+        when(userRepositoryPort.findById(2)).thenReturn(Optional.of(encargadaUser()));
+        when(statusRepositoryPort.findByFecha(today)).thenReturn(Optional.of(currentStatus));
+        when(activeBusinessOrdersPort.countActiveSince(cycleStartedAt))
+                .thenReturn(new ActiveBusinessOrderCounts(0, 0));
+        when(statusRepositoryPort.save(any(BusinessDayStatus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TodayBusinessStatusResponse response = useCase.updateToday(
+                new UpdateTodayBusinessStatusRequest(false, "Fin de jornada"),
+                authenticatedEncargada()
+        );
+
+        assertThat(response.abierto()).isFalse();
+        assertThat(response.motivoCierre()).isEqualTo("Fin de jornada");
+    }
+
+    private BusinessDayStatus openStatus(LocalDate today, LocalDateTime cycleStartedAt) {
+        return new BusinessDayStatus(
+                7,
+                today,
+                true,
+                null,
+                2,
+                cycleStartedAt.minusMinutes(10),
+                null,
+                cycleStartedAt
+        );
     }
 
     private AuthenticatedUser authenticatedEncargada() {

@@ -47,10 +47,11 @@ public class AdminSalesController {
     @PostMapping("/manual")
     public ApiResponse<SaleResponse> createManualSale(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreateManualSaleRequest request
     ) {
         AuthenticatedUser authenticatedUser = authenticateBearerTokenPort.authenticate(authorizationHeader);
-        return ApiResponse.ok(createManualSalePort.create(request, authenticatedUser));
+        return ApiResponse.ok(createManualSalePort.create(idempotencyKey, request, authenticatedUser));
     }
 
     @GetMapping

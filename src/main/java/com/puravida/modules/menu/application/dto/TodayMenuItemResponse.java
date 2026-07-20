@@ -10,6 +10,8 @@ public record TodayMenuItemResponse(
         String descripcion,
         String tipoPlatillo,
         BigDecimal precio,
+        String imagenUrl,
+        boolean publicado,
         boolean disponible
 ) {
 
@@ -21,6 +23,8 @@ public record TodayMenuItemResponse(
                 item.dish().descripcion(),
                 item.dish().tipoPlatillo(),
                 item.precioDia(),
+                DishResponse.publicImageUrl(item.dish()),
+                item.publicado(),
                 item.disponible()
         );
     }

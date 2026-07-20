@@ -59,11 +59,12 @@ public class WeeklyReportPdfGenerator implements WeeklyReportPdfGeneratorPort {
                 write(content, cursor, "Pendientes: " + report.pedidos().pendientes(), normalFont, 10F);
                 write(content, cursor, "Aceptados: " + report.pedidos().aceptados(), normalFont, 10F);
                 write(content, cursor, "Rechazados: " + report.pedidos().rechazados(), normalFont, 10F);
+                write(content, cursor, "Cancelados: " + report.pedidos().cancelados(), normalFont, 10F);
                 gap(cursor);
 
                 section(content, cursor, "Top de platillos vendidos");
                 if (report.topPlatillos().isEmpty()) {
-                    write(content, cursor, "Sin ventas remotas con detalle de platillos en este periodo.", normalFont, 10F);
+                    write(content, cursor, "Sin ventas válidas con detalle de platillos en este periodo.", normalFont, 10F);
                 } else {
                     int position = 1;
                     for (WeeklyReportTopDish dish : report.topPlatillos()) {
@@ -77,8 +78,8 @@ public class WeeklyReportPdfGenerator implements WeeklyReportPdfGeneratorPort {
 
                 section(content, cursor, "Notas");
                 write(content, cursor, "Las ventas anuladas no se suman al total activo.", normalFont, 9F);
-                write(content, cursor, "Las ventas manuales sin detalle no se incluyen en el top de platillos.", normalFont, 9F);
-                write(content, cursor, "VENTAS es la fuente oficial para los importes economicos.", normalFont, 9F);
+                write(content, cursor, "El top integra el detalle histórico de ventas manuales y remotas válidas.", normalFont, 9F);
+                write(content, cursor, "VENTAS es la fuente oficial para los importes económicos.", normalFont, 9F);
             }
             document.save(output);
             return output.toByteArray();

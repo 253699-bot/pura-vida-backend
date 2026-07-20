@@ -14,6 +14,6 @@ public class NotificationTypeConverter implements AttributeConverter<Notificatio
 
     @Override
     public NotificationType convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : NotificationType.fromDatabaseValue(dbData);
+        return NotificationType.fromDatabaseValue(dbData);
     }
 }

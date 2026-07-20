@@ -11,5 +11,4 @@ public interface MenuAvailabilityJpaRepository extends JpaRepository<MenuAvailab
 
     Optional<MenuAvailabilityEntity> findByMenuId(Integer menuId);
 
-    void deleteByMenuIdIn(Collection<Integer> menuIds);
 }

@@ -31,12 +31,49 @@ Respuesta exitosa:
 El documento incluye resumen de ventas, ventas por fuente, estados de pedidos,
 top de platillos y notas sobre anulaciones y ventas manuales.
 
+## Persistir un reporte semanal
+
+`POST /api/v1/admin/reports/weekly`
+
+```json
+{
+  "weekStart": "2026-07-06"
+}
+```
+
+`weekStart` es obligatorio y debe corresponder a un lunes. El endpoint calcula
+el resumen una sola vez y persiste un snapshot JSON con `Version_formato=1`.
+`Ruta_archivo` y `Dia_mayor_demanda` permanecen `NULL`; el platillo mas vendido
+solo se guarda cuando el resumen calculado contiene un ID real.
+
+La operacion es idempotente por `(Semana_inicio, Semana_fin)`. Si la semana ya
+existe, devuelve el mismo registro sin recalcular ni sobrescribir su historia.
+
+## Listar reportes persistidos
+
+`GET /api/v1/admin/reports/weekly`
+
+Devuelve metadatos ordenados por semana descendente. El campo
+`snapshotDisponible` identifica filas historicas anteriores a la persistencia
+JSON sin exponer el snapshot completo.
+
+## Descargar PDF historico por ID
+
+`GET /api/v1/admin/reports/weekly/{id}/pdf`
+
+Deserializa el snapshot almacenado y reutiliza el mismo generador PDFBox. No
+consulta metricas actuales y no lee `Ruta_archivo`. Una fila sin snapshot, con
+version no soportada, JSON corrupto o rango inconsistente responde `409
+Conflict`; nunca se recalcula ni reescribe silenciosamente.
+
 Errores:
 
 - `400 Bad Request`: `weekStart` no tiene formato `YYYY-MM-DD`.
 - `401 Unauthorized`: falta el bearer token o no es válido.
 - `403 Forbidden`: la cuenta no existe, está inactiva o no tiene rol
   `encargada`.
+- `404 Not Found`: el ID de reporte solicitado no existe.
+- `409 Conflict`: el registro historico no tiene un snapshot compatible.
 
 Ejemplos:
 

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "89923ff2-6370-4e2c-8b61-dc922eca6d68",
     "name": "PuraVida Backend",
-    "description": "Coleccion del backend PuraVida. Incluye autenticacion, perfil propio, historial seguro, finalizacion de pedidos aceptados y notificaciones internas propias.",
+    "description": "Coleccion del backend PuraVida. Incluye autenticacion, perfil, pedidos, menu y platillos, ventas manuales, configuracion del negocio, reportes persistidos y notificaciones.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -97,6 +97,7 @@
                   "  pm.expect(available, 'Se requiere al menos un platillo disponible').to.exist;",
                   "  if (available) {",
                   "    pm.collectionVariables.set('dishId', String(available.platilloId));",
+                  "    pm.collectionVariables.set('menuItemId', String(available.id));",
                   "  }",
                   "});"
                 ],
@@ -315,7 +316,22 @@
               ]
             },
             "method": "PATCH",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022tiempoEsperaEstimado\u0022: \u002225 minutos\u0022\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}/accept",
               "host": [
@@ -718,7 +734,52 @@
                 "me"
               ]
             },
-            "description": "Actualiza nombre y/o telefono del usuario autenticado. Correo, rol y password se rechazan."
+            "description": "Actualiza nombre y/o telefono del usuario autenticado. Use la request siguiente para probar el cambio de correo; rol y password se rechazan."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar correo de mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022correo\u0022: \u0022ana.maria@example.com\u0022\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Actualiza el correo propio; un correo ya registrado responde 409. Rol y password no son editables."
           },
           "response": []
         }
@@ -727,6 +788,69 @@
     {
       "name": "Administracion de pedidos",
       "item": [
+        {
+          "name": "Listar pedidos administrativos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders"
+              ]
+            },
+            "description": "Lista todos los pedidos. Puede agregar el query estado con un valor soportado."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar detalle administrativo",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Devuelve encabezado, auditoria y partidas historicas del pedido."
+          },
+          "response": []
+        },
         {
           "name": "Aceptar pedido",
           "request": {
@@ -741,7 +865,22 @@
               ]
             },
             "method": "PATCH",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022tiempoEsperaEstimado\u0022: \u002225 minutos\u0022\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/v1/admin/orders/{{orderId}}/accept",
               "host": [
@@ -756,7 +895,7 @@
                 "accept"
               ]
             },
-            "description": "Acepta un pedido pendiente y genera una venta remota."
+            "description": "Acepta un pedido pendiente con tiempo de espera obligatorio y genera una unica venta remota."
           },
           "response": []
         },
@@ -840,6 +979,315 @@
             "description": "Transiciona un pedido de aceptado a finalizado. Responde 409 para cualquier otro estado y no crea ni modifica ventas."
           },
           "response": []
+        },
+        {
+          "name": "Cancelar pedido aceptado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/{{cancelOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "{{cancelOrderId}}",
+                "cancel"
+              ]
+            },
+            "description": "No recibe body. Cancela solo un pedido aceptado y anula su venta remota en la misma transaccion."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu diario y platillos",
+      "item": [
+        {
+          "name": "Consultar menu publicado de hoy",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/menu/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "menu",
+                "today"
+              ]
+            },
+            "description": "Endpoint publico; devuelve solo filas publicadas y platillos activos."
+          },
+          "response": []
+        },
+        {
+          "name": "Publicar o reemplazar menu de hoy",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022items\u0022: [\n    {\n      \u0022platilloId\u0022: {{dishId}}\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/menu/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "menu",
+                "today"
+              ]
+            },
+            "description": "Publica la seleccion completa. Los omitidos se despublican logicamente; items vacio despublica todo."
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar disponibilidad de item del menu",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022disponible\u0022: false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/menu/today/items/{{menuItemId}}/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "menu",
+                "today",
+                "items",
+                "{{menuItemId}}",
+                "availability"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar platillos activos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dishes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dishes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear platillo",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022nombre\u0022: \u0022Tacos dorados\u0022,\n  \u0022descripcion\u0022: \u0022Orden de tacos\u0022,\n  \u0022tipoPlatillo\u0022: \u0022platillo_fuerte\u0022,\n  \u0022precioBase\u0022: 85.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dishes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dishes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Editar platillo",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022nombre\u0022: \u0022Tacos dorados actualizados\u0022,\n  \u0022descripcion\u0022: \u0022Orden actualizada\u0022,\n  \u0022tipoPlatillo\u0022: \u0022platillo_fuerte\u0022,\n  \u0022precioBase\u0022: 90.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dishes/{{dishId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dishes",
+                "{{dishId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Retirar platillo logicamente",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dishes/{{dishId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dishes",
+                "{{dishId}}"
+              ]
+            },
+            "description": "Marca el platillo inactivo; no elimina sus referencias historicas."
+          },
+          "response": []
         }
       ]
     },
@@ -906,6 +1354,365 @@
               ]
             },
             "description": "Devuelve el pedido propio y sus platillos. Un pedido ajeno o inexistente responde 404."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ventas manuales",
+      "item": [
+        {
+          "name": "Registrar venta manual por partidas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const payload = pm.response.json();",
+                  "  pm.collectionVariables.set('saleId', String(payload.data.id));",
+                  "  pm.expect(payload.data.items).to.be.an('array');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022items\u0022: [\n    {\n      \u0022menuItemId\u0022: {{menuItemId}},\n      \u0022cantidad\u0022: {{quantity}}\n    }\n  ],\n  \u0022observaciones\u0022: \u0022Venta en mostrador\u0022\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/sales/manual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "sales",
+                "manual"
+              ]
+            },
+            "description": "El total se calcula en backend. Repetir misma clave y payload devuelve la venta existente; la misma clave con otro payload responde 409."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Configuracion del negocio",
+      "item": [
+        {
+          "name": "Consultar configuracion publica",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/business/configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "business",
+                "configuration"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar logo publico",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/business/configuration/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "business",
+                "configuration",
+                "logo"
+              ]
+            },
+            "description": "Devuelve el binario del logo con Content-Type, ETag y cache publica sin autenticacion."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar configuracion administrativa",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022nombreFonda\u0022: \u0022PuraVida\u0022,\n  \u0022direccion\u0022: \u0022Calle Central 123\u0022,\n  \u0022horarios\u0022: \u0022Lunes a sabado, 08:00-18:00\u0022,\n  \u0022telefono\u0022: \u00229610000000\u0022,\n  \u0022correo\u0022: \u0022contacto@puravida.mx\u0022\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/business/configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "business",
+                "configuration"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar logo administrativo",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/business/configuration/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "business",
+                "configuration",
+                "logo"
+              ]
+            },
+            "description": "Seleccione un archivo en el campo multipart file; Postman agrega el boundary automaticamente."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reportes persistidos",
+      "item": [
+        {
+          "name": "Listar reportes semanales guardados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const payload = pm.response.json();",
+                  "  if (payload.data.length) pm.collectionVariables.set('reportId', String(payload.data[0].id));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reports/weekly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "weekly"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear reporte semanal persistido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const payload = pm.response.json();",
+                  "  pm.collectionVariables.set('reportId', String(payload.data.id));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \u0022weekStart\u0022: \u0022{{weekStart}}\u0022\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reports/weekly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "weekly"
+              ]
+            },
+            "description": "Crea de forma idempotente el snapshot semanal y devuelve sus metadatos."
+          },
+          "response": []
+        },
+        {
+          "name": "Descargar PDF de reporte persistido",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reports/weekly/{{reportId}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reports",
+                "weekly",
+                "{{reportId}}",
+                "pdf"
+              ]
+            },
+            "description": "Regenera el PDF desde el snapshot persistido identificado por reportId."
           },
           "response": []
         }
@@ -1072,8 +1879,28 @@
       "type": "string"
     },
     {
+      "key": "cancelOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "dishId",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "menuItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "saleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "manual-sale-001",
       "type": "string"
     },
     {
@@ -1083,6 +1910,11 @@
     },
     {
       "key": "weekStart",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reportId",
       "value": "",
       "type": "string"
     },

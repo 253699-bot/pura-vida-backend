@@ -1,6 +1,7 @@
 package com.puravida.modules.menu.application.dto;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -23,6 +24,7 @@ public record CreateDishRequest(
 
         @NotNull(message = "El precio base es obligatorio.")
         @DecimalMin(value = "0.00", inclusive = false, message = "El precio base debe ser mayor a cero.")
+        @Digits(integer = 6, fraction = 2, message = "El precio base debe respetar el formato 999999.99.")
         BigDecimal precioBase
 ) {
 }

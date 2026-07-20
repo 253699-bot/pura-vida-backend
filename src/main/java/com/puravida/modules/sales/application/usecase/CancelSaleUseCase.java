@@ -7,6 +7,7 @@ import com.puravida.modules.sales.application.port.in.CancelSalePort;
 import com.puravida.modules.sales.application.port.out.SaleRepositoryPort;
 import com.puravida.modules.sales.domain.exception.SaleValidationException;
 import com.puravida.modules.sales.domain.model.Sale;
+import com.puravida.modules.sales.domain.model.SaleSource;
 import com.puravida.modules.sales.domain.model.SaleStatus;
 import com.puravida.modules.users.domain.model.User;
 import com.puravida.shared.domain.exception.ConflictException;
@@ -37,8 +38,11 @@ public class CancelSaleUseCase implements CancelSalePort {
     ) {
         User actor = authorizationService.requireEncargada(authenticatedUser);
         String reason = normalizeReason(request);
-        Sale sale = saleRepositoryPort.findById(saleId)
+        Sale sale = saleRepositoryPort.findByIdForUpdate(saleId)
                 .orElseThrow(() -> new NotFoundException("No se encontro la venta."));
+        if (sale.source() == SaleSource.REMOTA) {
+            throw new ConflictException("Las ventas remotas se cancelan desde el pedido.");
+        }
         if (sale.status() != SaleStatus.ACTIVA) {
             throw new ConflictException("Solo las ventas activas pueden anularse.");
         }

@@ -32,7 +32,7 @@ public record User(
         );
     }
 
-    public User updateProfile(String nombre, String telefono) {
+    public User updateProfile(String nombre, String correo, String telefono) {
         return new User(
                 id,
                 nombre,

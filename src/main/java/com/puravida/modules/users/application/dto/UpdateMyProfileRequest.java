@@ -1,5 +1,7 @@
 package com.puravida.modules.users.application.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdateMyProfileRequest(
@@ -7,8 +9,11 @@ public record UpdateMyProfileRequest(
         String nombre,
 
         @Size(max = 20, message = "El telefono no debe exceder 20 caracteres.")
+        @Pattern(regexp = "^[0-9+(). -]*$", message = "El telefono contiene caracteres no permitidos.")
         String telefono,
 
+        @Email(message = "El correo debe tener un formato valido.")
+        @Size(max = 255, message = "El correo no debe exceder 255 caracteres.")
         String correo,
         String rol,
         String password

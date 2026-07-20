@@ -68,6 +68,17 @@ public class OrderNotificationUseCase implements OrderNotificationPort {
         );
     }
 
+    @Override
+    public void notifyOrderCancelled(Integer orderId, Integer clientId) {
+        notifyClient(
+                clientId,
+                orderId,
+                NotificationType.PEDIDO_CANCELADO,
+                "Pedido cancelado",
+                "Tu pedido #" + orderId + " fue cancelado por la fonda. Revisa el detalle para ver el estado actualizado."
+        );
+    }
+
     private void notifyClient(
             Integer clientId,
             Integer orderId,

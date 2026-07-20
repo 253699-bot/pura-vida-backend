@@ -3,6 +3,7 @@ package com.puravida.modules.cart.application.usecase;
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.users.application.port.out.UserRepositoryPort;
 import com.puravida.modules.users.domain.model.User;
+import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ForbiddenException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,14 @@ public class CartAuthorizationService {
                 .orElseThrow(() -> new ForbiddenException("No tienes permisos para operar el carrito."));
         if (!actor.activo()) {
             throw new ForbiddenException("No tienes permisos para operar el carrito.");
+        }
+        return actor;
+    }
+
+    public User requireClient(AuthenticatedUser authenticatedUser) {
+        User actor = requireActiveUser(authenticatedUser);
+        if (actor.rol() != UserRole.CLIENTE) {
+            throw new ForbiddenException("Solo los clientes pueden operar el carrito.");
         }
         return actor;
     }

@@ -20,10 +20,25 @@ public record OrderResponse(
         String motivoRechazo,
         Integer respondidoPor,
         LocalDateTime respondidoEn,
+        String tiempoEsperaEstimado,
+        Integer canceladoPor,
+        LocalDateTime canceladoEn,
         List<OrderItemResponse> items
 ) {
 
     public static OrderResponse from(Order order, String clienteNombre, List<OrderItem> items) {
+        return fromResponses(
+                order,
+                clienteNombre,
+                items.stream().map(OrderItemResponse::from).toList()
+        );
+    }
+
+    public static OrderResponse fromResponses(
+            Order order,
+            String clienteNombre,
+            List<OrderItemResponse> items
+    ) {
         return new OrderResponse(
                 order.id(),
                 order.clienteId(),
@@ -36,7 +51,10 @@ public record OrderResponse(
                 order.motivoRechazo(),
                 order.respondidoPor(),
                 order.respondidoEn(),
-                items.stream().map(OrderItemResponse::from).toList()
+                order.tiempoEsperaEstimado(),
+                order.canceladoPor(),
+                order.canceladoEn(),
+                items
         );
     }
 }

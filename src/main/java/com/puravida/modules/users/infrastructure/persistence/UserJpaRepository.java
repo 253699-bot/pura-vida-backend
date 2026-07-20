@@ -20,4 +20,6 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Integer> {
     List<UserEntity> findByRolAndActivoTrueAndNotificacionesActivasTrue(UserRole role);
 
     boolean existsByCorreo(String correo);
+
+    boolean existsByCorreoAndIdNot(String correo, Integer id);
 }

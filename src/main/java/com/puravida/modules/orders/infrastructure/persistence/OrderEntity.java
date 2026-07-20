@@ -52,6 +52,12 @@ public class OrderEntity {
     @Column(name = "Respondido_en")
     private LocalDateTime respondidoEn;
 
+    @Column(name = "Cancelado_por")
+    private Integer canceladoPor;
+
+    @Column(name = "Cancelado_en")
+    private LocalDateTime canceladoEn;
+
     @Column(name = "Observaciones", columnDefinition = "TEXT")
     private String observaciones;
 
@@ -72,6 +78,8 @@ public class OrderEntity {
             String motivoRechazo,
             Integer respondidoPor,
             LocalDateTime respondidoEn,
+            Integer canceladoPor,
+            LocalDateTime canceladoEn,
             String observaciones,
             LocalDateTime creadoEn
     ) {
@@ -85,6 +93,8 @@ public class OrderEntity {
         this.motivoRechazo = motivoRechazo;
         this.respondidoPor = respondidoPor;
         this.respondidoEn = respondidoEn;
+        this.canceladoPor = canceladoPor;
+        this.canceladoEn = canceladoEn;
         this.observaciones = observaciones;
         this.creadoEn = creadoEn;
     }
@@ -101,6 +111,8 @@ public class OrderEntity {
                 order.motivoRechazo(),
                 order.respondidoPor(),
                 order.respondidoEn(),
+                order.canceladoPor(),
+                order.canceladoEn(),
                 order.observaciones(),
                 order.creadoEn()
         );
@@ -118,6 +130,8 @@ public class OrderEntity {
                 motivoRechazo,
                 respondidoPor,
                 respondidoEn,
+                canceladoPor,
+                canceladoEn,
                 observaciones,
                 creadoEn
         );

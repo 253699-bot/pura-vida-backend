@@ -53,7 +53,8 @@ class GetWeeklyReportSummaryUseCaseTest {
                         new SourceSalesSummaryResponse(1, new BigDecimal("100.00")),
                         new SourceSalesSummaryResponse(2, new BigDecimal("200.00"))
                 ),
-                new DashboardOrdersResponse(2, 3, 1)
+                new DashboardOrdersResponse(2, 3, 1, 0),
+                List.of()
         );
         var top = new TopDishesResponse(from, to, List.of(
                 new TopDishResponse(8, "Cochito", 12, new BigDecimal("960.00"))

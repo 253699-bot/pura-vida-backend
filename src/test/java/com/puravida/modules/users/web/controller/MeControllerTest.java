@@ -105,7 +105,7 @@ class MeControllerTest {
         when(authenticateBearerTokenPort.authenticate("Bearer user-token")).thenReturn(authenticatedUser);
         when(updateMyProfilePort.update(any(UpdateMyProfileRequest.class), eq(authenticatedUser)))
                 .thenThrow(new UserProfileValidationException(
-                        "Solo se permite actualizar nombre y telefono."
+                        "No se permite actualizar rol o password desde este endpoint."
                 ));
 
         UpdateMyProfileRequest request = new UpdateMyProfileRequest(
@@ -122,7 +122,29 @@ class MeControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status", is("ERROR")))
-                .andExpect(jsonPath("$.message", is("Solo se permite actualizar nombre y telefono.")));
+                .andExpect(jsonPath("$.message", is(
+                        "No se permite actualizar rol o password desde este endpoint."
+                )));
+    }
+
+    @Test
+    void rejectsInvalidEmailBeforeUpdatingProfile() throws Exception {
+        AuthenticatedUser authenticatedUser = authenticatedClient();
+        when(authenticateBearerTokenPort.authenticate("Bearer user-token")).thenReturn(authenticatedUser);
+
+        UpdateMyProfileRequest request = new UpdateMyProfileRequest(
+                null, null, "correo-invalido", null, null
+        );
+
+        mockMvc.perform(patch("/api/v1/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer user-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is("ERROR")))
+                .andExpect(jsonPath("$.errors.correo", is(
+                        "El correo debe tener un formato valido."
+                )));
     }
 
     private AuthenticatedUser authenticatedClient() {

@@ -60,7 +60,7 @@ class GenerateWeeklyReportPdfUseCaseTest {
                         new WeeklyReportSourceSummary(0, BigDecimal.ZERO),
                         new WeeklyReportSourceSummary(0, BigDecimal.ZERO)
                 ),
-                new WeeklyReportOrdersSummary(0, 0, 0),
+                new WeeklyReportOrdersSummary(0, 0, 0, 0),
                 List.of()
         );
     }

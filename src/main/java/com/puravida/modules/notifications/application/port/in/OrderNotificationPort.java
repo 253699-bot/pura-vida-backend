@@ -7,4 +7,6 @@ public interface OrderNotificationPort {
     void notifyOrderAccepted(Integer orderId, Integer clientId);
 
     void notifyOrderRejected(Integer orderId, Integer clientId, String reason);
+
+    void notifyOrderCancelled(Integer orderId, Integer clientId);
 }

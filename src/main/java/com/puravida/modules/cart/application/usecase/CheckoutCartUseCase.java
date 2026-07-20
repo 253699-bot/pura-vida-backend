@@ -11,9 +11,7 @@ import com.puravida.modules.orders.application.port.in.CreateOrderPort;
 import com.puravida.modules.orders.application.port.out.MenuForOrderRepositoryPort;
 import com.puravida.modules.orders.domain.model.OrderableMenuItem;
 import com.puravida.modules.users.domain.model.User;
-import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ConflictException;
-import com.puravida.shared.domain.exception.ForbiddenException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +43,7 @@ public class CheckoutCartUseCase implements CheckoutCartPort {
     @Override
     @Transactional
     public OrderResponse checkout(AuthenticatedUser authenticatedUser) {
-        User client = requireClient(authenticatedUser);
+        User client = authorizationService.requireClient(authenticatedUser);
         List<CartItem> cartItems = cartRepositoryPort.findByUserIdForUpdate(client.id());
         if (cartItems.isEmpty()) {
             throw new ConflictException("El carrito esta vacio.");
@@ -60,14 +58,6 @@ public class CheckoutCartUseCase implements CheckoutCartPort {
         OrderResponse order = createOrderPort.create(new CreateOrderRequest(orderItems, null), authenticatedUser);
         cartRepositoryPort.deleteByUserId(client.id());
         return order;
-    }
-
-    private User requireClient(AuthenticatedUser authenticatedUser) {
-        User user = authorizationService.requireActiveUser(authenticatedUser);
-        if (user.rol() != UserRole.CLIENTE) {
-            throw new ForbiddenException("Solo los clientes pueden confirmar un carrito.");
-        }
-        return user;
     }
 
     private Map<Integer, OrderableMenuItem> menuItemsByDishId(LocalDate today) {

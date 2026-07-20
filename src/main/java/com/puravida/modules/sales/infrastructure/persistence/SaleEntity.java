@@ -35,6 +35,9 @@ public class SaleEntity {
     @Column(name = "Estado", nullable = false, columnDefinition = "ENUM('activa','anulada')")
     private SaleStatus status;
 
+    @Column(name = "Clave_idempotencia", length = 100)
+    private String idempotencyKey;
+
     @Column(name = "Fecha", nullable = false)
     private LocalDate fecha;
 
@@ -70,6 +73,7 @@ public class SaleEntity {
             Integer orderId,
             SaleSource source,
             SaleStatus status,
+            String idempotencyKey,
             LocalDate fecha,
             LocalTime hora,
             BigDecimal total,
@@ -84,6 +88,7 @@ public class SaleEntity {
         this.orderId = orderId;
         this.source = source;
         this.status = status;
+        this.idempotencyKey = idempotencyKey;
         this.fecha = fecha;
         this.hora = hora;
         this.total = total;
@@ -101,6 +106,7 @@ public class SaleEntity {
                 sale.orderId(),
                 sale.source(),
                 sale.status(),
+                sale.idempotencyKey(),
                 sale.fecha(),
                 sale.hora(),
                 sale.total(),
@@ -119,6 +125,7 @@ public class SaleEntity {
                 orderId,
                 source,
                 status,
+                idempotencyKey,
                 fecha,
                 hora,
                 total,

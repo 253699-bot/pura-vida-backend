@@ -112,6 +112,8 @@ class OrderControllerTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
                         LocalDateTime.of(2026, 7, 10, 12, 0)
                 ),
                 "Cliente Prueba"
@@ -223,6 +225,9 @@ class OrderControllerTest {
                 LocalTime.of(12, 0),
                 new BigDecimal("130.00"),
                 "Sin cebolla",
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

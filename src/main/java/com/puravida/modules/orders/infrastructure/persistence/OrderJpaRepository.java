@@ -2,6 +2,7 @@ package com.puravida.modules.orders.infrastructure.persistence;
 
 import com.puravida.modules.orders.domain.model.OrderStatus;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Lock;
@@ -21,5 +22,16 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, Integer> 
 
     List<OrderEntity> findByEstadoOrderByFechaDescHoraDesc(OrderStatus estado);
 
+    List<OrderEntity> findByEstadoInOrderByFechaDescHoraDesc(List<OrderStatus> estados);
+
     List<OrderEntity> findAllByOrderByFechaDescHoraDesc();
+
+    List<OrderEntity> findByCreadoEnGreaterThanEqualOrderByFechaDescHoraDesc(LocalDateTime creadoEn);
+
+    List<OrderEntity> findByEstadoAndCreadoEnGreaterThanEqualOrderByFechaDescHoraDesc(
+            OrderStatus estado,
+            LocalDateTime creadoEn
+    );
+
+    long countByEstadoAndCreadoEnGreaterThanEqual(OrderStatus estado, LocalDateTime creadoEn);
 }

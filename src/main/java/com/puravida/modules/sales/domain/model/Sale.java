@@ -10,6 +10,7 @@ public record Sale(
         Integer orderId,
         SaleSource source,
         SaleStatus status,
+        String idempotencyKey,
         LocalDate fecha,
         LocalTime hora,
         BigDecimal total,
@@ -28,6 +29,7 @@ public record Sale(
                 orderId,
                 SaleSource.REMOTA,
                 SaleStatus.ACTIVA,
+                null,
                 now.toLocalDate(),
                 now.toLocalTime(),
                 total,
@@ -40,13 +42,19 @@ public record Sale(
         );
     }
 
-    public static Sale createManual(BigDecimal total, Integer registradoPor, String observaciones) {
+    public static Sale createManual(
+            BigDecimal total,
+            Integer registradoPor,
+            String observaciones,
+            String idempotencyKey
+    ) {
         LocalDateTime now = LocalDateTime.now();
         return new Sale(
                 null,
                 null,
                 SaleSource.MANUAL_FONDA,
                 SaleStatus.ACTIVA,
+                idempotencyKey,
                 now.toLocalDate(),
                 now.toLocalTime(),
                 total,
@@ -65,6 +73,7 @@ public record Sale(
                 orderId,
                 source,
                 SaleStatus.ANULADA,
+                idempotencyKey,
                 fecha,
                 hora,
                 total,

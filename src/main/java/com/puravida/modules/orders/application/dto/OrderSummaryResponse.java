@@ -17,7 +17,10 @@ public record OrderSummaryResponse(
         String notas,
         String motivoRechazo,
         Integer respondidoPor,
-        LocalDateTime respondidoEn
+        LocalDateTime respondidoEn,
+        String tiempoEsperaEstimado,
+        Integer canceladoPor,
+        LocalDateTime canceladoEn
 ) {
 
     public static OrderSummaryResponse from(Order order, String clienteNombre) {
@@ -32,7 +35,10 @@ public record OrderSummaryResponse(
                 order.observaciones(),
                 order.motivoRechazo(),
                 order.respondidoPor(),
-                order.respondidoEn()
+                order.respondidoEn(),
+                order.tiempoEsperaEstimado(),
+                order.canceladoPor(),
+                order.canceladoEn()
         );
     }
 }

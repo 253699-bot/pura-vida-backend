@@ -1,24 +1,76 @@
 package com.puravida.shared.config;
 
+import java.util.Arrays;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
-public class CorsConfig implements WebMvcConfigurer {
+public class CorsConfig {
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins(
-                        "http://localhost:5173",
-                        "http://localhost:5174",
-                        "http://127.0.0.1:5173",
-                        "http://127.0.0.1:5174"
-                )
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Authorization", "Content-Type", "Accept")
-                .allowCredentials(false)
-                .maxAge(3600);
+    private static final List<String> ALLOWED_METHODS = List.of(
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
+    );
+
+    private static final List<String> ALLOWED_HEADERS = List.of(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+            "Idempotency-Key"
+    );
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins}") String configuredOrigins
+    ) {
+        List<String> allowedOrigins = Arrays.stream(configuredOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+
+        if (allowedOrigins.isEmpty()) {
+            throw new IllegalStateException(
+                    "Debe configurarse al menos un origen CORS permitido."
+            );
+        }
+
+        if (allowedOrigins.contains("*")) {
+            throw new IllegalStateException(
+                    "CORS no permite usar el origen comodin '*'."
+            );
+        }
+
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedMethods(ALLOWED_METHODS);
+        configuration.setAllowedHeaders(ALLOWED_HEADERS);
+        configuration.setExposedHeaders(List.of("Content-Disposition"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
+    @Bean
+    public CorsFilter corsFilter(CorsConfigurationSource corsConfigurationSource) {
+        return new CorsFilter(corsConfigurationSource);
     }
 }

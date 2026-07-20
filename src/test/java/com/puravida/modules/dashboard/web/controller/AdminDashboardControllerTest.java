@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.auth.application.port.in.AuthenticateBearerTokenPort;
+import com.puravida.modules.dashboard.application.dto.DashboardDailySalesResponse;
+import com.puravida.modules.dashboard.application.dto.DashboardHourlySalesResponse;
 import com.puravida.modules.dashboard.application.dto.DashboardOperationResponse;
 import com.puravida.modules.dashboard.application.dto.DashboardOrdersResponse;
 import com.puravida.modules.dashboard.application.dto.DashboardSalesResponse;
@@ -65,6 +67,8 @@ class AdminDashboardControllerTest {
                 .andExpect(jsonPath("$.status", is("OK")))
                 .andExpect(jsonPath("$.data.ventas.totalActivo", is(300.00)))
                 .andExpect(jsonPath("$.data.ventas.cantidadAnuladas", is(1)))
+                .andExpect(jsonPath("$.data.pedidos.cancelados", is(4)))
+                .andExpect(jsonPath("$.data.ventasPorHora[0].hora", is(12)))
                 .andExpect(jsonPath("$.data.operacion.negocioAbierto", is(true)));
     }
 
@@ -75,7 +79,13 @@ class AdminDashboardControllerTest {
         LocalDate to = LocalDate.of(2026, 7, 11);
         when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
         when(getDashboardSummaryPort.getSummary("2026-07-01", "2026-07-11", encargada))
-                .thenReturn(new DashboardSummaryResponse(from, to, sales(), new DashboardOrdersResponse(1, 2, 3)));
+                .thenReturn(new DashboardSummaryResponse(
+                        from,
+                        to,
+                        sales(),
+                        new DashboardOrdersResponse(1, 2, 3, 4),
+                        List.of(new DashboardDailySalesResponse(from, new BigDecimal("75.00"), 1))
+                ));
         when(getTopDishesPort.getTopDishes("2026-07-01", "2026-07-11", encargada))
                 .thenReturn(new TopDishesResponse(
                         from,
@@ -88,7 +98,9 @@ class AdminDashboardControllerTest {
                         .queryParam("to", "2026-07-11")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.pedidos.rechazados", is(3)));
+                .andExpect(jsonPath("$.data.pedidos.rechazados", is(3)))
+                .andExpect(jsonPath("$.data.pedidos.cancelados", is(4)))
+                .andExpect(jsonPath("$.data.ventasPorDia[0].fecha", is("2026-07-01")));
 
         mockMvc.perform(get("/api/v1/admin/dashboard/top-dishes")
                         .queryParam("from", "2026-07-01")
@@ -125,8 +137,9 @@ class AdminDashboardControllerTest {
         return new TodayDashboardResponse(
                 LocalDate.of(2026, 7, 11),
                 sales(),
-                new DashboardOrdersResponse(2, 3, 1),
-                new DashboardOperationResponse(true, true, null)
+                new DashboardOrdersResponse(2, 3, 1, 4),
+                new DashboardOperationResponse(true, true, null),
+                List.of(new DashboardHourlySalesResponse(12, new BigDecimal("300.00"), 3))
         );
     }
 

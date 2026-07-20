@@ -46,6 +46,11 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public boolean existsByCorreoAndIdNot(String correo, Integer id) {
+        return userJpaRepository.existsByCorreoAndIdNot(correo, id);
+    }
+
+    @Override
     public User save(User user) {
         return userJpaRepository.save(UserEntity.fromDomain(user)).toDomain();
     }
