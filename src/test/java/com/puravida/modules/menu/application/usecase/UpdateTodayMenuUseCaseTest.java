@@ -100,6 +100,21 @@ class UpdateTodayMenuUseCaseTest {
         assertThat(response.items().get(0).id()).isEqualTo(5);
     }
 
+    @Test
+    void allowsRetiringEveryPublishedItemWithoutDeletingHistory() {
+        AuthenticatedUser user = authenticatedEncargada();
+        when(authorizationService.requireEncargada(user)).thenReturn(TestMenuData.encargada());
+        when(dishRepositoryPort.findAllByIds(List.of())).thenReturn(List.of());
+        when(dailyMenuRepositoryPort.replaceForDate(any(LocalDate.class), eq(List.of()), eq(2)))
+                .thenReturn(List.of());
+
+        var response = useCase.updateToday(new UpdateTodayMenuRequest(List.of()), user);
+
+        assertThat(response.configured()).isFalse();
+        assertThat(response.items()).isEmpty();
+        verify(dailyMenuRepositoryPort).replaceForDate(any(LocalDate.class), eq(List.of()), eq(2));
+    }
+
     private AuthenticatedUser authenticatedEncargada() {
         return new AuthenticatedUser(2, "encargada@example.com", UserRole.ENCARGADA);
     }

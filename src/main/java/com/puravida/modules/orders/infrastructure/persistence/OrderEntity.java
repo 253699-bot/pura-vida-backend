@@ -46,11 +46,21 @@ public class OrderEntity {
     @Column(name = "Motivo_rechazo", columnDefinition = "TEXT")
     private String motivoRechazo;
 
+    @Column(name = "Categoria_rechazo",
+            columnDefinition = "ENUM('platillo_agotado','fonda_cerrada','pedido_fuera_de_horario','cantidad_no_disponible','otro')")
+    private String categoriaRechazo;
+
     @Column(name = "Respondido_por")
     private Integer respondidoPor;
 
     @Column(name = "Respondido_en")
     private LocalDateTime respondidoEn;
+
+    @Column(name = "Cancelado_por")
+    private Integer canceladoPor;
+
+    @Column(name = "Cancelado_en")
+    private LocalDateTime canceladoEn;
 
     @Column(name = "Observaciones", columnDefinition = "TEXT")
     private String observaciones;
@@ -70,8 +80,11 @@ public class OrderEntity {
             BigDecimal total,
             String tiempoEsperaEstimado,
             String motivoRechazo,
+            String categoriaRechazo,
             Integer respondidoPor,
             LocalDateTime respondidoEn,
+            Integer canceladoPor,
+            LocalDateTime canceladoEn,
             String observaciones,
             LocalDateTime creadoEn
     ) {
@@ -83,8 +96,11 @@ public class OrderEntity {
         this.total = total;
         this.tiempoEsperaEstimado = tiempoEsperaEstimado;
         this.motivoRechazo = motivoRechazo;
+        this.categoriaRechazo = categoriaRechazo;
         this.respondidoPor = respondidoPor;
         this.respondidoEn = respondidoEn;
+        this.canceladoPor = canceladoPor;
+        this.canceladoEn = canceladoEn;
         this.observaciones = observaciones;
         this.creadoEn = creadoEn;
     }
@@ -99,8 +115,11 @@ public class OrderEntity {
                 order.total(),
                 order.tiempoEsperaEstimado(),
                 order.motivoRechazo(),
+                order.categoriaRechazo(),
                 order.respondidoPor(),
                 order.respondidoEn(),
+                order.canceladoPor(),
+                order.canceladoEn(),
                 order.observaciones(),
                 order.creadoEn()
         );
@@ -116,8 +135,11 @@ public class OrderEntity {
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 respondidoPor,
                 respondidoEn,
+                canceladoPor,
+                canceladoEn,
                 observaciones,
                 creadoEn
         );

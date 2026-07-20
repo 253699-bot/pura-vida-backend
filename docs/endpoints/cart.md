@@ -2,7 +2,7 @@
 
 El carrito contiene informacion temporal previa a confirmar un pedido. Cada
 operacion requiere `Authorization: Bearer <token>` y solo permite operar los
-items del usuario autenticado.
+items del usuario autenticado con rol `cliente`.
 
 ## Ver carrito
 
@@ -22,8 +22,10 @@ guardado al agregar cada platillo.
 }
 ```
 
-El platillo debe existir y estar activo. Si ya existe en el carrito del mismo
-usuario, se incrementa la cantidad y se conserva el precio snapshot original.
+La fonda debe estar abierta y el platillo debe pertenecer al menu publicado de
+hoy, seguir activo y estar disponible. Si ya existe en el carrito del mismo
+cliente, se incrementa la cantidad. El snapshot se actualiza al precio diario
+vigente.
 
 ## Actualizar cantidad
 
@@ -35,7 +37,10 @@ usuario, se incrementa la cantidad y se conserva el precio snapshot original.
 }
 ```
 
-La cantidad debe ser positiva y el item debe pertenecer al usuario autenticado.
+La cantidad debe ser positiva, el item debe pertenecer al cliente autenticado y
+el platillo debe seguir vendible bajo las mismas reglas del alta. La consulta se
+limita por `(cartItemId, userId)`, por lo que un item ajeno tampoco revela su
+existencia.
 
 ## Eliminar item
 
@@ -45,8 +50,9 @@ Devuelve `204 No Content`. Elimina fisicamente la fila de `CARRITO_ITEMS` solo
 despues de validar su propiedad. Esto es seguro porque el carrito no representa
 un pedido confirmado ni datos de ventas o historial financiero.
 
-Errores habituales: `401` sin token, `403` si el item pertenece a otro usuario,
-`404` si el item no existe y `400` para cantidades invalidas.
+Errores habituales: `401` sin token, `403` si el usuario no es cliente, `404`
+si el item no existe o es ajeno, `400` para cantidades invalidas y `409` cuando
+la fonda esta cerrada o el platillo ya no esta disponible.
 
 Los platillos usan baja logica por sus relaciones historicas; los items del
 carrito no comparten esa necesidad y por eso su eliminacion es fisica.
@@ -63,7 +69,7 @@ Antes de crear el pedido se valida que:
 - el usuario autenticado tenga rol `cliente` y este activo;
 - el carrito no este vacio;
 - la fonda este abierta;
-- cada platillo pertenezca al menu de hoy, siga activo y este disponible.
+- cada platillo pertenezca al menu publicado de hoy, siga activo y este disponible.
 
 Los precios y totales se recalculan con el precio vigente del menu diario; no
 se confia en el precio snapshot del carrito. El pedido y su detalle se guardan

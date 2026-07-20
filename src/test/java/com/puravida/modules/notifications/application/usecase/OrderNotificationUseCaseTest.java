@@ -62,12 +62,26 @@ class OrderNotificationUseCaseTest {
         when(notificationRepositoryPort.save(any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        useCase.notifyOrderRejected(30, 1, "Sin existencias");
+        useCase.notifyOrderRejected(30, 1, "otro", "Sin existencias");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepositoryPort).save(captor.capture());
         assertThat(captor.getValue().tipo()).isEqualTo(NotificationType.PEDIDO_RECHAZADO);
         assertThat(captor.getValue().mensaje()).contains("Sin existencias");
+    }
+
+    @Test
+    void notifiesClientWithKnownRejectionCategoryLabel() {
+        when(userRepositoryPort.findById(1))
+                .thenReturn(Optional.of(user(1, UserRole.CLIENTE, true, true)));
+        when(notificationRepositoryPort.save(any(Notification.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        useCase.notifyOrderRejected(30, 1, "platillo_agotado", null);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepositoryPort).save(captor.capture());
+        assertThat(captor.getValue().mensaje()).contains("Platillo agotado");
     }
 
     @Test

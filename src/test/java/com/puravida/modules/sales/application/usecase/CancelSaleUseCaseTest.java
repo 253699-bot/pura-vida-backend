@@ -35,7 +35,7 @@ class CancelSaleUseCaseTest {
     void cancelsActiveSaleWithAuditData() {
         when(authorizationService.requireEncargada(TestSaleData.authenticatedEncargada()))
                 .thenReturn(TestSaleData.encargada());
-        when(saleRepositoryPort.findById(20)).thenReturn(Optional.of(TestSaleData.activeManualSale()));
+        when(saleRepositoryPort.findByIdForUpdate(20)).thenReturn(Optional.of(TestSaleData.activeManualSale()));
         when(saleRepositoryPort.save(any(Sale.class))).thenReturn(TestSaleData.cancelledManualSale());
 
         var response = useCase.cancel(
@@ -56,13 +56,30 @@ class CancelSaleUseCaseTest {
     void rejectsAlreadyCancelledSale() {
         when(authorizationService.requireEncargada(TestSaleData.authenticatedEncargada()))
                 .thenReturn(TestSaleData.encargada());
-        when(saleRepositoryPort.findById(20)).thenReturn(Optional.of(TestSaleData.cancelledManualSale()));
+        when(saleRepositoryPort.findByIdForUpdate(20)).thenReturn(Optional.of(TestSaleData.cancelledManualSale()));
 
         assertThatThrownBy(() -> useCase.cancel(
                 20,
                 new CancelSaleRequest("Otro motivo"),
                 TestSaleData.authenticatedEncargada()
         )).isInstanceOf(ConflictException.class);
+
+        verify(saleRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void rejectsRemoteSaleBecauseItMustBeCancelledFromOrder() {
+        when(authorizationService.requireEncargada(TestSaleData.authenticatedEncargada()))
+                .thenReturn(TestSaleData.encargada());
+        when(saleRepositoryPort.findByIdForUpdate(21))
+                .thenReturn(Optional.of(TestSaleData.activeRemoteSale()));
+
+        assertThatThrownBy(() -> useCase.cancel(
+                21,
+                new CancelSaleRequest("No aplica"),
+                TestSaleData.authenticatedEncargada()
+        )).isInstanceOf(ConflictException.class)
+                .hasMessageContaining("pedido");
 
         verify(saleRepositoryPort, never()).save(any());
     }

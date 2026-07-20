@@ -17,8 +17,6 @@ import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.auth.application.port.in.AuthenticateBearerTokenPort;
 import com.puravida.modules.cart.application.dto.AddCartItemRequest;
 import com.puravida.modules.cart.application.dto.CartItemResponse;
-import com.puravida.modules.cart.application.dto.CartResponse;
-import com.puravida.modules.cart.application.dto.UpdateCartItemQuantityRequest;
 import com.puravida.modules.cart.application.port.in.AddCartItemPort;
 import com.puravida.modules.cart.application.port.in.CheckoutCartPort;
 import com.puravida.modules.cart.application.port.in.DeleteCartItemPort;
@@ -38,10 +36,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(value = CartController.class, properties = "debug=false")
@@ -198,7 +196,8 @@ class CartControllerTest {
         );
         return new OrderResponse(
                 10, 1, "Cliente", "pendiente", LocalDate.now(), LocalTime.NOON,
-                new BigDecimal("180.00"), null, null, null, null, List.of(item)
+                new BigDecimal("180.00"), null, null, null, null,
+                null, null, null, null, List.of(item)
         );
     }
 }

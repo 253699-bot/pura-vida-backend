@@ -31,6 +31,9 @@ public class DailyMenuEntity {
     @Column(name = "Precio_dia", nullable = false, precision = 8, scale = 2)
     private BigDecimal precioDia;
 
+    @Column(name = "Publicado", nullable = false)
+    private boolean publicado;
+
     @Column(name = "Creado_por", nullable = false)
     private Integer creadoPor;
 
@@ -45,6 +48,7 @@ public class DailyMenuEntity {
             LocalDate fecha,
             Integer dishId,
             BigDecimal precioDia,
+            boolean publicado,
             Integer creadoPor,
             LocalDateTime creadoEn
     ) {
@@ -52,6 +56,7 @@ public class DailyMenuEntity {
         this.fecha = fecha;
         this.dishId = dishId;
         this.precioDia = precioDia;
+        this.publicado = publicado;
         this.creadoPor = creadoPor;
         this.creadoEn = creadoEn;
     }
@@ -62,6 +67,7 @@ public class DailyMenuEntity {
                 fecha,
                 dish.id(),
                 dish.precioBase(),
+                true,
                 creadoPor,
                 LocalDateTime.now()
         );
@@ -83,6 +89,21 @@ public class DailyMenuEntity {
         return precioDia;
     }
 
+    public boolean publicado() {
+        return publicado;
+    }
+
+    public void publish(Dish dish) {
+        if (!this.publicado) {
+            this.precioDia = dish.precioBase();
+        }
+        this.publicado = true;
+    }
+
+    public void unpublish() {
+        this.publicado = false;
+    }
+
     public DailyMenuItem toDomain(Dish dish, MenuAvailability availability) {
         return new DailyMenuItem(
                 id,
@@ -91,6 +112,7 @@ public class DailyMenuEntity {
                 precioDia,
                 creadoPor,
                 creadoEn,
+                publicado,
                 availability
         );
     }

@@ -31,7 +31,8 @@ public class GetTodayDashboardUseCase implements GetTodayDashboardPort {
                 today,
                 repositoryPort.aggregateSales(today, today),
                 repositoryPort.aggregateOrders(today, today),
-                repositoryPort.findOperation(today)
+                repositoryPort.findOperation(today),
+                repositoryPort.findSalesByHour(today)
         );
     }
 }

@@ -11,6 +11,7 @@ public record DailyMenuItem(
         BigDecimal precioDia,
         Integer creadoPor,
         LocalDateTime creadoEn,
+        boolean publicado,
         MenuAvailability availability
 ) {
 

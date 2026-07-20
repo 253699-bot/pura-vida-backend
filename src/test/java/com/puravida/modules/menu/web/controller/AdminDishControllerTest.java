@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,6 +20,8 @@ import com.puravida.modules.menu.application.dto.DishResponse;
 import com.puravida.modules.menu.application.port.in.CreateDishPort;
 import com.puravida.modules.menu.application.port.in.DeleteDishPort;
 import com.puravida.modules.menu.application.port.in.GetActiveDishesPort;
+import com.puravida.modules.menu.application.port.in.UpdateDishImagePort;
+import com.puravida.modules.menu.application.port.in.UpdateDishPort;
 import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ForbiddenException;
 import com.puravida.shared.domain.exception.NotFoundException;
@@ -32,6 +36,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -53,6 +58,12 @@ class AdminDishControllerTest {
 
     @MockitoBean
     private DeleteDishPort deleteDishPort;
+
+    @MockitoBean
+    private UpdateDishPort updateDishPort;
+
+    @MockitoBean
+    private UpdateDishImagePort updateDishImagePort;
 
     @MockitoBean
     private AuthenticateBearerTokenPort authenticateBearerTokenPort;
@@ -126,6 +137,58 @@ class AdminDishControllerTest {
     }
 
     @Test
+    void updatesDishForEncargada() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(updateDishPort.update(eq(12), any(CreateDishRequest.class), eq(encargada)))
+                .thenReturn(dishResponse());
+
+        mockMvc.perform(put("/api/v1/admin/dishes/12")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("OK")))
+                .andExpect(jsonPath("$.data.id", is(12)))
+                .andExpect(jsonPath("$.data.nombre", is("Comida corrida")));
+    }
+
+    @Test
+    void updateRejectsPriceOutsideDatabaseScale() throws Exception {
+        mockMvc.perform(put("/api/v1/admin/dishes/12")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Comida corrida",
+                                  "tipoPlatillo": "platillo_fuerte",
+                                  "precioBase": 0.001
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void updatesDishImageForEncargada() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        DishResponse response = dishResponseWithImage();
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "dish.png", "image/png", new byte[]{1, 2, 3}
+        );
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(updateDishImagePort.update(eq(12), any(byte[].class), eq("image/png"), eq(encargada)))
+                .thenReturn(response);
+
+        mockMvc.perform(multipart("/api/v1/admin/dishes/12/image")
+                        .file(file)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("OK")))
+                .andExpect(jsonPath("$.data.id", is(12)))
+                .andExpect(jsonPath("$.data.imagenUrl", is("/api/v1/dishes/12/image")));
+    }
+    @Test
     void deactivatesDishForEncargada() throws Exception {
         AuthenticatedUser encargada = encargada();
         when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
@@ -194,9 +257,25 @@ class AdminDishControllerTest {
                 "Incluye sopa y guisado.",
                 "platillo_fuerte",
                 new BigDecimal("85.00"),
+                null,
                 true,
                 LocalDateTime.of(2026, 7, 12, 10, 0),
                 null
+        );
+    }
+
+    private DishResponse dishResponseWithImage() {
+        DishResponse dish = dishResponse();
+        return new DishResponse(
+                dish.id(),
+                dish.nombre(),
+                dish.descripcion(),
+                dish.tipoPlatillo(),
+                dish.precioBase(),
+                "/api/v1/dishes/12/image",
+                dish.activo(),
+                dish.creadoEn(),
+                dish.actualizadoEn()
         );
     }
 
@@ -208,6 +287,7 @@ class AdminDishControllerTest {
                 dish.descripcion(),
                 dish.tipoPlatillo(),
                 dish.precioBase(),
+                dish.imagenUrl(),
                 false,
                 dish.creadoEn(),
                 LocalDateTime.of(2026, 7, 13, 10, 0)

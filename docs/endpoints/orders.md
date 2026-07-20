@@ -29,7 +29,10 @@ Respuesta abreviada:
       "notas": "Sin cebolla",
       "motivoRechazo": null,
       "respondidoPor": null,
-      "respondidoEn": null
+      "respondidoEn": null,
+      "tiempoEsperaEstimado": null,
+      "canceladoPor": null,
+      "canceladoEn": null
     }
   ]
 }
@@ -86,6 +89,53 @@ curl "$BASE_URL/api/v1/orders/my" \
 curl "$BASE_URL/api/v1/orders/my/$ORDER_ID" \
   -H "Authorization: Bearer $CLIENT_TOKEN"
 ```
+
+## Administrar pedidos
+
+Los endpoints bajo `/api/v1/admin/orders` requieren una usuaria activa con rol
+`encargada`.
+
+- `GET /api/v1/admin/orders`: lista todos los pedidos y acepta el filtro
+  opcional `estado`.
+- `GET /api/v1/admin/orders/{id}`: devuelve encabezado, auditoria y partidas
+  historicas del pedido.
+- `PATCH /api/v1/admin/orders/{id}/reject`: rechaza un pedido pendiente; exige
+  `{"motivoRechazo":"..."}`.
+
+### Aceptar con tiempo estimado
+
+`PATCH /api/v1/admin/orders/{id}/accept`
+
+```json
+{
+  "tiempoEsperaEstimado": "25 minutos"
+}
+```
+
+El tiempo es obligatorio, se recorta en sus extremos y admite como maximo 100
+caracteres. La transicion bloquea el pedido, crea una sola venta remota y guarda
+`respondidoPor`/`respondidoEn`. Repetir la misma operacion con el mismo tiempo
+devuelve el estado existente sin crear otra venta ni notificacion; repetirla con
+un tiempo distinto devuelve `409 Conflict`.
+
+### Cancelar un pedido aceptado
+
+`PATCH /api/v1/admin/orders/{id}/cancel`
+
+No recibe body. Solo permite `aceptado -> cancelado`. En una misma transaccion
+bloquea pedido y venta remota, conserva el pedido, registra `canceladoPor` y
+`canceladoEn`, y anula la venta con el motivo fijo
+`Pedido cancelado por la encargada.`. Repetir una cancelacion ya coherente
+devuelve el estado existente sin nuevas escrituras ni notificaciones.
+
+Errores de administracion:
+
+- `400 Bad Request`: tiempo o motivo faltante/invalido.
+- `401 Unauthorized`: bearer token faltante o invalido.
+- `403 Forbidden`: usuario inactivo o sin rol `encargada`.
+- `404 Not Found`: pedido inexistente.
+- `409 Conflict`: transicion invalida, reintento de aceptacion con otro tiempo,
+  o inconsistencia entre pedido y venta remota.
 
 ## Finalizar un pedido aceptado
 

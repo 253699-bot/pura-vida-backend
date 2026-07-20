@@ -5,6 +5,7 @@ import com.puravida.modules.cart.application.dto.CartResponse;
 import com.puravida.modules.cart.domain.model.CartDish;
 import com.puravida.modules.cart.domain.model.CartItem;
 import com.puravida.shared.domain.exception.NotFoundException;
+import com.puravida.shared.web.ApiPaths;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +35,16 @@ public class CartResponseAssembler {
                 dish.nombre(),
                 item.cantidad(),
                 item.precioUnitario(),
-                subtotal
+                subtotal,
+                publicImageUrl(dish)
         );
+    }
+
+    private String publicImageUrl(CartDish dish) {
+        if (dish.id() == null || dish.imagenKey() == null || dish.imagenKey().isBlank()) {
+            return null;
+        }
+        return ApiPaths.API_V1 + "/dishes/" + dish.id() + "/image";
     }
 
     private CartDish requiredDish(Map<Integer, CartDish> dishesById, Integer dishId) {

@@ -35,6 +35,7 @@ public class CartDishRepositoryAdapter implements CartDishRepositoryPort {
                 domainDish.id(),
                 domainDish.nombre(),
                 domainDish.precioBase(),
+                domainDish.imagenKey(),
                 domainDish.activo()
         );
     }

@@ -37,10 +37,12 @@ class CorsSecurityTest {
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
                         .header(
                                 HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
-                                "authorization,content-type,x-requested-with"
+                                "authorization,content-type,x-requested-with,idempotency-key"
                         ))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, VERCEL_ORIGIN))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        org.hamcrest.Matchers.containsStringIgnoringCase("idempotency-key")))
                 .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
     }
 

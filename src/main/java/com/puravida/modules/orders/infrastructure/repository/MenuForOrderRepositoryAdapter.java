@@ -37,7 +37,7 @@ public class MenuForOrderRepositoryAdapter implements MenuForOrderRepositoryPort
 
     @Override
     public List<OrderableMenuItem> findByFecha(LocalDate fecha) {
-        List<DailyMenuEntity> menuItems = dailyMenuJpaRepository.findByFechaOrderByIdAsc(fecha);
+        List<DailyMenuEntity> menuItems = dailyMenuJpaRepository.findByFechaAndPublicadoTrueOrderByIdAsc(fecha);
         if (menuItems.isEmpty()) {
             return List.of();
         }

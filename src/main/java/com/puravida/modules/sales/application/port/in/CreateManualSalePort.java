@@ -6,5 +6,9 @@ import com.puravida.modules.sales.application.dto.SaleResponse;
 
 public interface CreateManualSalePort {
 
-    SaleResponse create(CreateManualSaleRequest request, AuthenticatedUser authenticatedUser);
+    SaleResponse create(
+            String idempotencyKey,
+            CreateManualSaleRequest request,
+            AuthenticatedUser authenticatedUser
+    );
 }

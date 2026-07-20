@@ -12,8 +12,21 @@ public record TodayBusinessStatusResponse(
         String motivoCierre,
         Integer registradoPor,
         LocalDateTime creadoEn,
-        LocalDateTime actualizadoEn
+        LocalDateTime actualizadoEn,
+        LocalDateTime cicloIniciadoEn
 ) {
+    public TodayBusinessStatusResponse(
+            boolean configured,
+            Integer id,
+            LocalDate fecha,
+            Boolean abierto,
+            String motivoCierre,
+            Integer registradoPor,
+            LocalDateTime creadoEn,
+            LocalDateTime actualizadoEn
+    ) {
+        this(configured, id, fecha, abierto, motivoCierre, registradoPor, creadoEn, actualizadoEn, null);
+    }
 
     public static TodayBusinessStatusResponse from(BusinessDayStatus status) {
         return new TodayBusinessStatusResponse(
@@ -24,11 +37,12 @@ public record TodayBusinessStatusResponse(
                 status.motivoCierre(),
                 status.registradoPor(),
                 status.creadoEn(),
-                status.actualizadoEn()
+                status.actualizadoEn(),
+                status.cicloIniciadoEn()
         );
     }
 
     public static TodayBusinessStatusResponse notConfigured(LocalDate fecha) {
-        return new TodayBusinessStatusResponse(false, null, fecha, null, null, null, null, null);
+        return new TodayBusinessStatusResponse(false, null, fecha, null, null, null, null, null, null);
     }
 }

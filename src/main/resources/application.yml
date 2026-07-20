@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: pura-vida-api
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
   datasource:
     url: ${PURAVIDA_DB_URL:jdbc:mysql://localhost:3306/pura_vida?createDatabaseIfNotExist=false&useSSL=false&serverTimezone=UTC}
     username: ${PURAVIDA_DB_USERNAME:puravida_app}

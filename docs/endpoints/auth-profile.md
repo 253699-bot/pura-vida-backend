@@ -56,25 +56,33 @@ La cuenta debe existir y permanecer activa.
 
 `PATCH /api/v1/me`
 
-Permite cambiar parcialmente `nombre` y `telefono`. Al omitir uno de ellos se
-conserva su valor actual; enviar `telefono` vacio lo limpia.
+Permite cambiar parcialmente `nombre`, `correo` y `telefono`. Al omitir un
+campo se conserva su valor actual; enviar `telefono` vacio lo limpia. El correo
+se recorta, normaliza a minusculas y valida contra la restriccion unica.
 
 ```json
 {
   "nombre": "Ana Maria",
+  "correo": "ana.nueva@example.com",
   "telefono": "9611111111"
 }
 ```
 
-La actualización bloquea la fila del usuario autenticado y conserva siempre su
-`correo`, `rol`, `passwordHash`, icono, preferencias y estado. Los campos
-`correo`, `rol` y `password` se rechazan explícitamente con `400 Bad Request`;
-el cambio de password queda fuera de este endpoint.
+La actualizacion bloquea la fila del usuario autenticado y conserva siempre su
+`rol`, `passwordHash`, icono, preferencias y estado. `rol` y `password` se
+rechazan explicitamente con `400 Bad Request`; el cambio de password queda
+fuera de este endpoint.
+
+Cuando la cuenta tiene rol `encargada` y cambia correo o telefono, el backend
+sincroniza esos valores con el singleton de configuracion publica en la misma
+transaccion. Si la sincronizacion falla tampoco se confirma el cambio del
+usuario.
 
 Errores de perfil:
 
 - `400 Bad Request`: body vacio, nombre vacio, longitudes invalidas o intento
   de modificar campos protegidos.
+- `409 Conflict`: el correo normalizado ya pertenece a otra cuenta.
 - `401 Unauthorized`: bearer token ausente o invalido.
 - `403 Forbidden`: el usuario del token no existe o esta inactivo.
 
@@ -87,5 +95,5 @@ curl "$BASE_URL/api/v1/me" \
 curl -X PATCH "$BASE_URL/api/v1/me" \
   -H "Authorization: Bearer $USER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"nombre":"Ana Maria","telefono":"9611111111"}'
+  -d '{"nombre":"Ana Maria","correo":"ana.nueva@example.com","telefono":"9611111111"}'
 ```

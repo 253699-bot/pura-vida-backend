@@ -11,6 +11,7 @@ import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,6 +61,16 @@ class CartRepositoryAdapterTest {
         adapter.deleteByUserId(1);
 
         verify(cartItemJpaRepository).deleteByUserId(1);
+    }
+
+    @Test
+    void scopesSingleItemLookupToAuthenticatedUser() {
+        CartItem item = cartItem();
+        when(cartItemJpaRepository.findByIdAndUserId(8, 1))
+                .thenReturn(Optional.of(CartItemJpaEntity.fromDomain(item)));
+
+        assertThat(adapter.findByIdAndUserId(8, 1)).contains(item);
+        verify(cartItemJpaRepository).findByIdAndUserId(8, 1);
     }
 
     private CartItem cartItem() {

@@ -16,7 +16,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
@@ -40,7 +39,9 @@ public class DailyMenuRepositoryAdapter implements DailyMenuRepositoryPort {
 
     @Override
     public List<DailyMenuItem> findByFecha(LocalDate fecha) {
-        return toDomain(dailyMenuJpaRepository.findByFechaOrderByIdAsc(fecha));
+        return toDomain(dailyMenuJpaRepository.findByFechaAndPublicadoTrueOrderByIdAsc(fecha)).stream()
+                .filter(item -> item.dish() != null && item.dish().activo())
+                .toList();
     }
 
     @Override
@@ -52,20 +53,20 @@ public class DailyMenuRepositoryAdapter implements DailyMenuRepositoryPort {
     @Override
     public List<DailyMenuItem> replaceForDate(LocalDate fecha, List<Dish> dishes, Integer creadoPor) {
         List<DailyMenuEntity> existingItems = dailyMenuJpaRepository.findByFechaOrderByIdAsc(fecha);
-        Set<Integer> requestedDishIds = dishes.stream().map(Dish::id).collect(Collectors.toSet());
-        List<Integer> idsToRemove = existingItems.stream()
-                .filter(item -> !requestedDishIds.contains(item.dishId()))
-                .map(DailyMenuEntity::id)
-                .toList();
-
-        if (!idsToRemove.isEmpty()) {
-            availabilityJpaRepository.deleteByMenuIdIn(idsToRemove);
-            dailyMenuJpaRepository.deleteByIdIn(idsToRemove);
-            dailyMenuJpaRepository.flush();
-        }
-
-        Map<Integer, DailyMenuEntity> currentByDishId = dailyMenuJpaRepository.findByFechaOrderByIdAsc(fecha).stream()
+        Map<Integer, Dish> requestedByDishId = dishes.stream()
+                .collect(Collectors.toMap(Dish::id, Function.identity()));
+        Map<Integer, DailyMenuEntity> currentByDishId = existingItems.stream()
                 .collect(Collectors.toMap(DailyMenuEntity::dishId, Function.identity()));
+
+        existingItems.forEach(item -> {
+            Dish requestedDish = requestedByDishId.get(item.dishId());
+            if (requestedDish == null) {
+                item.unpublish();
+            } else {
+                item.publish(requestedDish);
+            }
+        });
+        dailyMenuJpaRepository.saveAll(existingItems);
 
         for (Dish dish : dishes) {
             if (!currentByDishId.containsKey(dish.id())) {

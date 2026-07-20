@@ -8,6 +8,7 @@ import com.puravida.modules.orders.infrastructure.persistence.OrderEntity;
 import com.puravida.modules.orders.infrastructure.persistence.OrderItemEntity;
 import com.puravida.modules.orders.infrastructure.persistence.OrderItemJpaRepository;
 import com.puravida.modules.orders.infrastructure.persistence.OrderJpaRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -78,6 +79,29 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
     @Override
     public List<Order> findByStatus(OrderStatus status) {
         return orderJpaRepository.findByEstadoOrderByFechaDescHoraDesc(status).stream()
+                .map(OrderEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findByStatuses(List<OrderStatus> statuses) {
+        return orderJpaRepository.findByEstadoInOrderByFechaDescHoraDesc(statuses).stream()
+                .map(OrderEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findCreatedSince(LocalDateTime cycleStartedAt) {
+        return orderJpaRepository.findByCreadoEnGreaterThanEqualOrderByFechaDescHoraDesc(cycleStartedAt).stream()
+                .map(OrderEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findByStatusCreatedSince(OrderStatus status, LocalDateTime cycleStartedAt) {
+        return orderJpaRepository
+                .findByEstadoAndCreadoEnGreaterThanEqualOrderByFechaDescHoraDesc(status, cycleStartedAt)
+                .stream()
                 .map(OrderEntity::toDomain)
                 .toList();
     }

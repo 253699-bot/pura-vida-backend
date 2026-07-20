@@ -5,14 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.puravida.modules.notifications.application.port.in.OrderNotificationPort;
+import com.puravida.modules.orders.application.dto.AcceptOrderRequest;
 import com.puravida.modules.orders.application.dto.OrderResponse;
 import com.puravida.modules.orders.application.port.out.OrderRepositoryPort;
 import com.puravida.modules.orders.domain.model.Order;
 import com.puravida.modules.sales.application.port.out.SaleRepositoryPort;
-import com.puravida.modules.sales.domain.model.Sale;
 import com.puravida.shared.domain.exception.ConflictException;
 import java.util.List;
 import java.util.Optional;
@@ -45,59 +46,69 @@ class AcceptOrderUseCaseTest {
     private AcceptOrderUseCase useCase;
 
     @Test
-    void acceptsPendingOrderAndRegistersResponder() {
+    void acceptsPendingOrderAndDoesNotCreateRemoteSale() {
         Order accepted = TestOrderData.acceptedOrder();
         OrderResponse expected = OrderResponse.from(accepted, "Cliente Prueba", List.of(TestOrderData.orderItem()));
-        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
+        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada()))
+                .thenReturn(TestOrderData.encargada());
         when(orderRepositoryPort.findByIdForUpdate(10)).thenReturn(Optional.of(TestOrderData.pendingOrder()));
-        when(saleRepositoryPort.existsByOrderId(10)).thenReturn(false);
         when(orderRepositoryPort.save(any(Order.class))).thenReturn(accepted);
-        when(saleRepositoryPort.save(any(Sale.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderRepositoryPort.findItemsByOrderId(10)).thenReturn(List.of(TestOrderData.orderItem()));
         when(responseAssembler.detail(accepted, List.of(TestOrderData.orderItem()))).thenReturn(expected);
 
-        assertThat(useCase.accept(10, TestOrderData.authenticatedEncargada())).isSameAs(expected);
+        assertThat(useCase.accept(
+                10,
+                new AcceptOrderRequest(" 25 minutos "),
+                TestOrderData.authenticatedEncargada()
+        )).isSameAs(expected);
 
         ArgumentCaptor<Order> savedOrder = ArgumentCaptor.forClass(Order.class);
         verify(orderRepositoryPort).save(savedOrder.capture());
         assertThat(savedOrder.getValue().estado().databaseValue()).isEqualTo("aceptado");
         assertThat(savedOrder.getValue().respondidoPor()).isEqualTo(2);
-        ArgumentCaptor<Sale> savedSale = ArgumentCaptor.forClass(Sale.class);
-        verify(saleRepositoryPort).save(savedSale.capture());
-        assertThat(savedSale.getValue().orderId()).isEqualTo(10);
-        assertThat(savedSale.getValue().source().databaseValue()).isEqualTo("remota");
-        assertThat(savedSale.getValue().total()).isEqualByComparingTo("130.00");
+        assertThat(savedOrder.getValue().tiempoEsperaEstimado()).isEqualTo("25 minutos");
+        verifyNoInteractions(saleRepositoryPort);
         verify(orderNotificationPort).notifyOrderAccepted(10, 1);
     }
 
     @Test
-    void returnsAcceptedOrderWithoutDuplicatingSaleOnRetry() {
+    void returnsAcceptedOrderOnRetryWithoutLookingForSale() {
         Order accepted = TestOrderData.acceptedOrder();
-        Sale existingSale = Sale.createRemote(10, accepted.total(), 2);
         OrderResponse expected = OrderResponse.from(accepted, "Cliente Prueba", List.of(TestOrderData.orderItem()));
-        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
+        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada()))
+                .thenReturn(TestOrderData.encargada());
         when(orderRepositoryPort.findByIdForUpdate(10)).thenReturn(Optional.of(accepted));
-        when(saleRepositoryPort.findByOrderId(10)).thenReturn(Optional.of(existingSale));
         when(orderRepositoryPort.findItemsByOrderId(10)).thenReturn(List.of(TestOrderData.orderItem()));
         when(responseAssembler.detail(accepted, List.of(TestOrderData.orderItem()))).thenReturn(expected);
 
-        assertThat(useCase.accept(10, TestOrderData.authenticatedEncargada())).isSameAs(expected);
+        assertThat(useCase.accept(
+                10,
+                new AcceptOrderRequest("25 minutos"),
+                TestOrderData.authenticatedEncargada()
+        )).isSameAs(expected);
 
         verify(orderRepositoryPort, never()).save(any());
-        verify(saleRepositoryPort, never()).save(any());
+        verifyNoInteractions(saleRepositoryPort);
         verify(orderNotificationPort, never()).notifyOrderAccepted(any(), any());
     }
 
     @Test
-    void rejectsAcceptedOrderWithoutAssociatedSale() {
-        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada())).thenReturn(TestOrderData.encargada());
-        when(orderRepositoryPort.findByIdForUpdate(10)).thenReturn(Optional.of(TestOrderData.acceptedOrder()));
-        when(saleRepositoryPort.findByOrderId(10)).thenReturn(Optional.empty());
+    void rejectsRetryWithDifferentEstimatedWait() {
+        when(authorizationService.requireEncargada(TestOrderData.authenticatedEncargada()))
+                .thenReturn(TestOrderData.encargada());
+        when(orderRepositoryPort.findByIdForUpdate(10))
+                .thenReturn(Optional.of(TestOrderData.acceptedOrder()));
 
-        assertThatThrownBy(() -> useCase.accept(10, TestOrderData.authenticatedEncargada()))
-                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> useCase.accept(
+                10,
+                new AcceptOrderRequest("40 minutos"),
+                TestOrderData.authenticatedEncargada()
+        ))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("El pedido ya fue aceptado con un tiempo de espera diferente.");
 
         verify(orderRepositoryPort, never()).save(any());
+        verifyNoInteractions(saleRepositoryPort);
         verify(orderNotificationPort, never()).notifyOrderAccepted(any(), any());
     }
 }

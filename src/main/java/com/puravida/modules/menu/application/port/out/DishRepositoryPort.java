@@ -11,6 +11,8 @@ public interface DishRepositoryPort {
 
     Optional<Dish> findById(Integer id);
 
+    Optional<Dish> findByIdForUpdate(Integer id);
+
     Dish save(Dish dish);
 
     List<Dish> findAllActive();

@@ -14,8 +14,11 @@ public record Order(
         BigDecimal total,
         String tiempoEsperaEstimado,
         String motivoRechazo,
+        String categoriaRechazo,
         Integer respondidoPor,
         LocalDateTime respondidoEn,
+        Integer canceladoPor,
+        LocalDateTime canceladoEn,
         String observaciones,
         LocalDateTime creadoEn
 ) {
@@ -38,12 +41,15 @@ public record Order(
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 observaciones,
                 LocalDateTime.now()
         );
     }
 
-    public Order accept(Integer encargadoId) {
+    public Order accept(Integer encargadoId, String tiempoEsperaEstimado) {
         return new Order(
                 id,
                 clienteId,
@@ -53,14 +59,17 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 null,
+                null,
                 encargadoId,
                 LocalDateTime.now(),
+                null,
+                null,
                 observaciones,
                 creadoEn
         );
     }
 
-    public Order reject(Integer encargadoId, String motivoRechazo) {
+    public Order reject(Integer encargadoId, String categoriaRechazo, String motivoRechazo) {
         return new Order(
                 id,
                 clienteId,
@@ -70,8 +79,11 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 encargadoId,
                 LocalDateTime.now(),
+                null,
+                null,
                 observaciones,
                 creadoEn
         );
@@ -87,8 +99,31 @@ public record Order(
                 total,
                 tiempoEsperaEstimado,
                 motivoRechazo,
+                categoriaRechazo,
                 respondidoPor,
                 respondidoEn,
+                canceladoPor,
+                canceladoEn,
+                observaciones,
+                creadoEn
+        );
+    }
+
+    public Order cancel(Integer encargadoId) {
+        return new Order(
+                id,
+                clienteId,
+                fecha,
+                hora,
+                OrderStatus.CANCELADO,
+                total,
+                tiempoEsperaEstimado,
+                motivoRechazo,
+                categoriaRechazo,
+                respondidoPor,
+                respondidoEn,
+                encargadoId,
+                LocalDateTime.now(),
                 observaciones,
                 creadoEn
         );

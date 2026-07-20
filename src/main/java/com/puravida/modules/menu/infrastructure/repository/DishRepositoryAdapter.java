@@ -31,6 +31,11 @@ public class DishRepositoryAdapter implements DishRepositoryPort {
     }
 
     @Override
+    public Optional<Dish> findByIdForUpdate(Integer id) {
+        return dishJpaRepository.findByIdForUpdate(id).map(DishEntity::toDomain);
+    }
+
+    @Override
     public Dish save(Dish dish) {
         return dishJpaRepository.save(DishEntity.fromDomain(dish)).toDomain();
     }

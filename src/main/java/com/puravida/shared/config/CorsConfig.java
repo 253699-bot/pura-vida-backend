@@ -13,10 +13,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class CorsConfig {
 
     private static final List<String> ALLOWED_METHODS = List.of(
-            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
     );
+
     private static final List<String> ALLOWED_HEADERS = List.of(
-            "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"
+            "Authorization",
+            "Content-Type",
+            "Accept",
+             "Origin",
+             "X-Requested-With",
+             "Idempotency-Key"
     );
 
     @Bean
@@ -29,10 +40,15 @@ public class CorsConfig {
                 .toList();
 
         if (allowedOrigins.isEmpty()) {
-            throw new IllegalStateException("Debe configurarse al menos un origen CORS permitido.");
+            throw new IllegalStateException(
+                    "Debe configurarse al menos un origen CORS permitido."
+            );
         }
+
         if (allowedOrigins.contains("*")) {
-            throw new IllegalStateException("CORS no permite usar el origen comodin '*'.");
+            throw new IllegalStateException(
+                    "CORS no permite usar el origen comodin '*'."
+            );
         }
 
         CorsConfiguration configuration = new CorsConfiguration();
@@ -43,8 +59,11 @@ public class CorsConfig {
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }

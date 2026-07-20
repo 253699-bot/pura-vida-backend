@@ -6,12 +6,14 @@ import static org.mockito.Mockito.when;
 
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.dashboard.application.port.out.DashboardMetricsRepositoryPort;
+import com.puravida.modules.dashboard.domain.model.HourlySalesMetric;
 import com.puravida.modules.dashboard.domain.model.OperationMetrics;
 import com.puravida.modules.dashboard.domain.model.OrderMetrics;
 import com.puravida.modules.dashboard.domain.model.SalesMetrics;
 import com.puravida.modules.dashboard.domain.model.SourceSalesMetrics;
 import com.puravida.modules.users.domain.model.UserRole;
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,8 +42,11 @@ class GetTodayDashboardUseCaseTest {
                 new SourceSalesMetrics(1, new BigDecimal("100.00")),
                 new SourceSalesMetrics(2, new BigDecimal("200.00"))
         ));
-        when(repositoryPort.aggregateOrders(any(), any())).thenReturn(new OrderMetrics(2, 3, 1));
+        when(repositoryPort.aggregateOrders(any(), any())).thenReturn(new OrderMetrics(2, 3, 1, 4));
         when(repositoryPort.findOperation(any())).thenReturn(new OperationMetrics(true, true, null));
+        when(repositoryPort.findSalesByHour(any())).thenReturn(List.of(
+                new HourlySalesMetric(12, new BigDecimal("300.00"), 3)
+        ));
 
         var response = useCase.getToday(encargada());
 
@@ -50,6 +55,8 @@ class GetTodayDashboardUseCaseTest {
         assertThat(response.ventas().manuales().total()).isEqualByComparingTo("100.00");
         assertThat(response.ventas().remotas().total()).isEqualByComparingTo("200.00");
         assertThat(response.pedidos().pendientes()).isEqualTo(2);
+        assertThat(response.pedidos().cancelados()).isEqualTo(4);
+        assertThat(response.ventasPorHora()).hasSize(1);
         assertThat(response.operacion().negocioAbierto()).isTrue();
     }
 
@@ -63,8 +70,9 @@ class GetTodayDashboardUseCaseTest {
                 new SourceSalesMetrics(0, BigDecimal.ZERO),
                 new SourceSalesMetrics(0, BigDecimal.ZERO)
         ));
-        when(repositoryPort.aggregateOrders(any(), any())).thenReturn(new OrderMetrics(0, 0, 0));
+        when(repositoryPort.aggregateOrders(any(), any())).thenReturn(new OrderMetrics(0, 0, 0, 0));
         when(repositoryPort.findOperation(any())).thenReturn(OperationMetrics.notConfigured());
+        when(repositoryPort.findSalesByHour(any())).thenReturn(List.of());
 
         var response = useCase.getToday(encargada());
 

@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.puravida.modules.menu.application.port.out.DailyMenuRepositoryPort;
-import com.puravida.modules.menu.domain.model.DailyMenuItem;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;

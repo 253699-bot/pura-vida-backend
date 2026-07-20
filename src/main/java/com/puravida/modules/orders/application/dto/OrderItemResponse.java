@@ -10,10 +10,27 @@ public record OrderItemResponse(
         String nombre,
         Integer cantidad,
         BigDecimal precioUnitario,
-        BigDecimal subtotal
+        BigDecimal subtotal,
+        String imagenUrl
 ) {
 
+    public OrderItemResponse(
+            Integer id,
+            Integer menuItemId,
+            Integer platilloId,
+            String nombre,
+            Integer cantidad,
+            BigDecimal precioUnitario,
+            BigDecimal subtotal
+    ) {
+        this(id, menuItemId, platilloId, nombre, cantidad, precioUnitario, subtotal, null);
+    }
+
     public static OrderItemResponse from(OrderItem item) {
+        return from(item, null);
+    }
+
+    public static OrderItemResponse from(OrderItem item, String imagenUrl) {
         return new OrderItemResponse(
                 item.id(),
                 item.menuItemId(),
@@ -21,7 +38,8 @@ public record OrderItemResponse(
                 item.nombrePlatillo(),
                 item.cantidad(),
                 item.precioUnitario(),
-                item.subtotal()
+                item.subtotal(),
+                imagenUrl
         );
     }
 }

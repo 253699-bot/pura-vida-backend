@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
@@ -13,12 +14,13 @@ import com.puravida.modules.cart.application.port.out.CartDishRepositoryPort;
 import com.puravida.modules.cart.application.port.out.CartRepositoryPort;
 import com.puravida.modules.cart.domain.model.CartDish;
 import com.puravida.modules.cart.domain.model.CartItem;
+import com.puravida.modules.orders.domain.model.OrderableMenuItem;
 import com.puravida.modules.users.domain.model.User;
 import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ConflictException;
-import com.puravida.shared.domain.exception.ForbiddenException;
 import com.puravida.shared.domain.exception.NotFoundException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +42,9 @@ class CartUseCasesTest {
     @Mock
     private CartAuthorizationService authorizationService;
 
+    @Mock
+    private CartSellabilityService sellabilityService;
+
     private AddCartItemUseCase addCartItemUseCase;
     private UpdateCartItemQuantityUseCase updateCartItemQuantityUseCase;
     private DeleteCartItemUseCase deleteCartItemUseCase;
@@ -50,10 +55,12 @@ class CartUseCasesTest {
     @BeforeEach
     void setUp() {
         addCartItemUseCase = new AddCartItemUseCase(
-                cartRepositoryPort, cartDishRepositoryPort, authorizationService, responseAssembler
+                cartRepositoryPort, cartDishRepositoryPort, authorizationService, responseAssembler,
+                sellabilityService
         );
         updateCartItemQuantityUseCase = new UpdateCartItemQuantityUseCase(
-                cartRepositoryPort, cartDishRepositoryPort, authorizationService, responseAssembler
+                cartRepositoryPort, cartDishRepositoryPort, authorizationService, responseAssembler,
+                sellabilityService
         );
         deleteCartItemUseCase = new DeleteCartItemUseCase(cartRepositoryPort, authorizationService);
         getCartUseCase = new GetCartUseCase(
@@ -63,7 +70,8 @@ class CartUseCasesTest {
 
     @Test
     void addsActiveDishWithPriceSnapshot() {
-        when(authorizationService.requireActiveUser(authenticatedUser())).thenReturn(user());
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
+        when(sellabilityService.requireSellableDish(2)).thenReturn(menuItem());
         when(cartDishRepositoryPort.findById(2)).thenReturn(Optional.of(activeDish()));
         when(cartRepositoryPort.findByUserIdAndDishId(1, 2)).thenReturn(Optional.empty());
         when(cartRepositoryPort.save(any(CartItem.class))).thenAnswer(invocation -> {
@@ -74,19 +82,36 @@ class CartUseCasesTest {
         var response = addCartItemUseCase.add(new AddCartItemRequest(2, 2), authenticatedUser());
 
         assertThat(response.id()).isEqualTo(8);
-        assertThat(response.precioUnitario()).isEqualByComparingTo("85.00");
-        assertThat(response.subtotal()).isEqualByComparingTo("170.00");
+        assertThat(response.precioUnitario()).isEqualByComparingTo("90.00");
+        assertThat(response.subtotal()).isEqualByComparingTo("180.00");
+    }
+
+    @Test
+    void rejectsQuantityOverflowBeforePersistence() {
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
+        when(sellabilityService.requireSellableDish(2)).thenReturn(menuItem());
+        when(cartDishRepositoryPort.findById(2)).thenReturn(Optional.of(activeDish()));
+        when(cartRepositoryPort.findByUserIdAndDishId(1, 2)).thenReturn(Optional.of(
+                new CartItem(8, 1, 2, Integer.MAX_VALUE, BigDecimal.ONE, LocalDateTime.now(), null)
+        ));
+
+        assertThatThrownBy(() -> addCartItemUseCase.add(new AddCartItemRequest(2, 1), authenticatedUser()))
+                .isInstanceOf(com.puravida.modules.cart.domain.exception.CartValidationException.class)
+                .hasMessageContaining("demasiado grande");
+        verify(cartRepositoryPort, never()).save(any());
     }
 
     @Test
     void rejectsMissingOrInactiveDish() {
-        when(authorizationService.requireActiveUser(authenticatedUser())).thenReturn(user());
-        when(cartDishRepositoryPort.findById(99)).thenReturn(Optional.empty());
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
+        when(sellabilityService.requireSellableDish(99))
+                .thenThrow(new NotFoundException("El platillo no pertenece al menu publicado de hoy."));
 
         assertThatThrownBy(() -> addCartItemUseCase.add(new AddCartItemRequest(99, 1), authenticatedUser()))
                 .isInstanceOf(NotFoundException.class);
 
-        when(cartDishRepositoryPort.findById(3)).thenReturn(Optional.of(new CartDish(3, "Inactivo", BigDecimal.TEN, false)));
+        when(sellabilityService.requireSellableDish(3))
+                .thenThrow(new ConflictException("El platillo no esta disponible."));
         assertThatThrownBy(() -> addCartItemUseCase.add(new AddCartItemRequest(3, 1), authenticatedUser()))
                 .isInstanceOf(ConflictException.class);
     }
@@ -94,21 +119,22 @@ class CartUseCasesTest {
     @Test
     void updatesOnlyQuantityForOwnedItem() {
         CartItem item = cartItem();
-        when(authorizationService.requireActiveUser(authenticatedUser())).thenReturn(user());
-        when(cartRepositoryPort.findById(8)).thenReturn(Optional.of(item));
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
+        when(cartRepositoryPort.findByIdAndUserId(8, 1)).thenReturn(Optional.of(item));
+        when(sellabilityService.requireSellableDish(2)).thenReturn(menuItem());
         when(cartDishRepositoryPort.findById(2)).thenReturn(Optional.of(activeDish()));
         when(cartRepositoryPort.save(any(CartItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = updateCartItemQuantityUseCase.updateQuantity(8, new UpdateCartItemQuantityRequest(3), authenticatedUser());
 
         assertThat(response.cantidad()).isEqualTo(3);
-        assertThat(response.precioUnitario()).isEqualByComparingTo("85.00");
+        assertThat(response.precioUnitario()).isEqualByComparingTo("90.00");
     }
 
     @Test
     void physicallyDeletesOnlyOwnedItem() {
-        when(authorizationService.requireActiveUser(authenticatedUser())).thenReturn(user());
-        when(cartRepositoryPort.findById(8)).thenReturn(Optional.of(cartItem()));
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
+        when(cartRepositoryPort.findByIdAndUserId(8, 1)).thenReturn(Optional.of(cartItem()));
 
         deleteCartItemUseCase.delete(8, authenticatedUser());
 
@@ -117,21 +143,20 @@ class CartUseCasesTest {
 
     @Test
     void rejectsMissingOrForeignCartItem() {
-        when(authorizationService.requireActiveUser(authenticatedUser())).thenReturn(user());
-        when(cartRepositoryPort.findById(99)).thenReturn(Optional.empty());
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
+        when(cartRepositoryPort.findByIdAndUserId(99, 1)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> deleteCartItemUseCase.delete(99, authenticatedUser()))
                 .isInstanceOf(NotFoundException.class);
 
-        CartItem foreignItem = new CartItem(7, 2, 2, 1, BigDecimal.TEN, LocalDateTime.now(), null);
-        when(cartRepositoryPort.findById(7)).thenReturn(Optional.of(foreignItem));
+        when(cartRepositoryPort.findByIdAndUserId(7, 1)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> deleteCartItemUseCase.delete(7, authenticatedUser()))
-                .isInstanceOf(ForbiddenException.class);
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test
     void returnsOnlyTheAuthenticatedUsersCart() {
-        when(authorizationService.requireActiveUser(authenticatedUser())).thenReturn(user());
+        when(authorizationService.requireClient(authenticatedUser())).thenReturn(user());
         when(cartRepositoryPort.findByUserId(1)).thenReturn(List.of(cartItem()));
         when(cartDishRepositoryPort.findAllByIds(List.of(2))).thenReturn(List.of(activeDish()));
 
@@ -157,5 +182,11 @@ class CartUseCasesTest {
 
     private CartItem cartItem() {
         return new CartItem(8, 1, 2, 2, new BigDecimal("85.00"), LocalDateTime.now(), null);
+    }
+
+    private OrderableMenuItem menuItem() {
+        return new OrderableMenuItem(
+                20, LocalDate.now(), 2, "Comida corrida", new BigDecimal("90.00"), true, true
+        );
     }
 }

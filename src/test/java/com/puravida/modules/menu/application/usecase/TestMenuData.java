@@ -21,6 +21,7 @@ final class TestMenuData {
                 "Orden de tacos",
                 "platillo_fuerte",
                 new BigDecimal("65.00"),
+                null,
                 true,
                 LocalDateTime.now().minusDays(2),
                 null
@@ -35,6 +36,7 @@ final class TestMenuData {
                 dish.descripcion(),
                 dish.tipoPlatillo(),
                 dish.precioBase(),
+                dish.imagenKey(),
                 false,
                 dish.creadoEn(),
                 dish.actualizadoEn()
@@ -53,6 +55,7 @@ final class TestMenuData {
                 new BigDecimal("65.00"),
                 2,
                 LocalDateTime.now().minusHours(3),
+                true,
                 new MenuAvailability(3, 5, false, null, null, LocalDateTime.now())
         );
     }
@@ -65,6 +68,7 @@ final class TestMenuData {
                 new BigDecimal("65.00"),
                 2,
                 LocalDateTime.now().minusHours(3),
+                true,
                 new MenuAvailability(3, 5, true, null, null, null)
         );
     }

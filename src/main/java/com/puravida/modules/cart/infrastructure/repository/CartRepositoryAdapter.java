@@ -37,6 +37,12 @@ public class CartRepositoryAdapter implements CartRepositoryPort {
     }
 
     @Override
+    public Optional<CartItem> findByIdAndUserId(Integer cartItemId, Integer userId) {
+        return cartItemJpaRepository.findByIdAndUserId(cartItemId, userId)
+                .map(CartItemJpaEntity::toDomain);
+    }
+
+    @Override
     public Optional<CartItem> findByUserIdAndDishId(Integer userId, Integer dishId) {
         return cartItemJpaRepository.findByUserIdAndDishId(userId, dishId).map(CartItemJpaEntity::toDomain);
     }

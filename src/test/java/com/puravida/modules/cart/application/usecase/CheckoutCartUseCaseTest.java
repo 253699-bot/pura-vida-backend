@@ -63,7 +63,7 @@ class CheckoutCartUseCaseTest {
     @Test
     void createsOrderFromAuthenticatedUsersCartAndThenClearsIt() {
         AuthenticatedUser authenticatedUser = authenticatedClient();
-        when(authorizationService.requireActiveUser(authenticatedUser)).thenReturn(client());
+        when(authorizationService.requireClient(authenticatedUser)).thenReturn(client());
         when(cartRepositoryPort.findByUserIdForUpdate(1)).thenReturn(List.of(cartItem()));
         when(menuRepositoryPort.findByFecha(any(LocalDate.class))).thenReturn(List.of(availableMenuItem()));
         when(createOrderPort.create(any(CreateOrderRequest.class), eq(authenticatedUser))).thenReturn(orderResponse());
@@ -86,7 +86,7 @@ class CheckoutCartUseCaseTest {
 
     @Test
     void rejectsEmptyCartWithoutCreatingOrder() {
-        when(authorizationService.requireActiveUser(authenticatedClient())).thenReturn(client());
+        when(authorizationService.requireClient(authenticatedClient())).thenReturn(client());
         when(cartRepositoryPort.findByUserIdForUpdate(1)).thenReturn(List.of());
 
         assertThatThrownBy(() -> useCase.checkout(authenticatedClient()))
@@ -99,7 +99,7 @@ class CheckoutCartUseCaseTest {
 
     @Test
     void rejectsDishThatIsNoLongerAvailable() {
-        when(authorizationService.requireActiveUser(authenticatedClient())).thenReturn(client());
+        when(authorizationService.requireClient(authenticatedClient())).thenReturn(client());
         when(cartRepositoryPort.findByUserIdForUpdate(1)).thenReturn(List.of(cartItem()));
         when(menuRepositoryPort.findByFecha(any(LocalDate.class))).thenReturn(List.of(unavailableMenuItem()));
 
@@ -113,7 +113,7 @@ class CheckoutCartUseCaseTest {
 
     @Test
     void rejectsDishThatIsNoLongerActive() {
-        when(authorizationService.requireActiveUser(authenticatedClient())).thenReturn(client());
+        when(authorizationService.requireClient(authenticatedClient())).thenReturn(client());
         when(cartRepositoryPort.findByUserIdForUpdate(1)).thenReturn(List.of(cartItem()));
         when(menuRepositoryPort.findByFecha(any(LocalDate.class))).thenReturn(List.of(inactiveMenuItem()));
 
@@ -127,7 +127,7 @@ class CheckoutCartUseCaseTest {
 
     @Test
     void keepsCartWhenOrderCreationFails() {
-        when(authorizationService.requireActiveUser(authenticatedClient())).thenReturn(client());
+        when(authorizationService.requireClient(authenticatedClient())).thenReturn(client());
         when(cartRepositoryPort.findByUserIdForUpdate(1)).thenReturn(List.of(cartItem()));
         when(menuRepositoryPort.findByFecha(any(LocalDate.class))).thenReturn(List.of(availableMenuItem()));
         when(createOrderPort.create(any(CreateOrderRequest.class), eq(authenticatedClient())))
@@ -141,13 +141,12 @@ class CheckoutCartUseCaseTest {
 
     @Test
     void rejectsNonClientBeforeReadingCart() {
-        User encargada = new User(2, "Encargada", "encargada@example.com", null, "hash", UserRole.ENCARGADA,
-                null, true, true, LocalDateTime.now(), null);
-        when(authorizationService.requireActiveUser(authenticatedClient())).thenReturn(encargada);
+        when(authorizationService.requireClient(authenticatedClient()))
+                .thenThrow(new ForbiddenException("Solo los clientes pueden operar el carrito."));
 
         assertThatThrownBy(() -> useCase.checkout(authenticatedClient()))
                 .isInstanceOf(ForbiddenException.class)
-                .hasMessage("Solo los clientes pueden confirmar un carrito.");
+                .hasMessage("Solo los clientes pueden operar el carrito.");
 
         verifyNoInteractions(cartRepositoryPort, menuRepositoryPort, createOrderPort);
     }
@@ -192,6 +191,10 @@ class CheckoutCartUseCaseTest {
                 LocalDate.now(),
                 LocalTime.NOON,
                 new BigDecimal("180.00"),
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

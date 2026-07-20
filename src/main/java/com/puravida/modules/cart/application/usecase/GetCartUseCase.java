@@ -34,7 +34,7 @@ public class GetCartUseCase implements GetCartPort {
     @Override
     @Transactional(readOnly = true)
     public CartResponse getCart(AuthenticatedUser authenticatedUser) {
-        User user = authorizationService.requireActiveUser(authenticatedUser);
+        User user = authorizationService.requireClient(authenticatedUser);
         List<CartItem> items = cartRepositoryPort.findByUserId(user.id());
         return responseAssembler.cart(
                 items,

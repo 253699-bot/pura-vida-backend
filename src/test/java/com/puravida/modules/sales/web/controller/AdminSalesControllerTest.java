@@ -14,11 +14,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.auth.application.port.in.AuthenticateBearerTokenPort;
 import com.puravida.modules.sales.application.dto.CancelSaleRequest;
+import com.puravida.modules.sales.application.dto.CreateManualSaleItemRequest;
 import com.puravida.modules.sales.application.dto.CreateManualSaleRequest;
+import com.puravida.modules.sales.application.dto.SaleItemResponse;
 import com.puravida.modules.sales.application.dto.SaleResponse;
 import com.puravida.modules.sales.application.port.in.CancelSalePort;
 import com.puravida.modules.sales.application.port.in.CreateManualSalePort;
 import com.puravida.modules.sales.application.port.in.GetSalesPort;
+import com.puravida.modules.sales.domain.exception.SaleValidationException;
 import com.puravida.modules.users.domain.model.UserRole;
 import com.puravida.shared.domain.exception.ForbiddenException;
 import com.puravida.shared.domain.exception.UnauthorizedException;
@@ -63,20 +66,26 @@ class AdminSalesControllerTest {
     void createsManualSaleForEncargada() throws Exception {
         AuthenticatedUser encargada = encargada();
         when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
-        when(createManualSalePort.create(any(CreateManualSaleRequest.class), eq(encargada)))
+        when(createManualSalePort.create(eq("sale-key"), any(CreateManualSaleRequest.class), eq(encargada)))
                 .thenReturn(activeSale());
 
         mockMvc.perform(post("/api/v1/admin/sales/manual")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .header("Idempotency-Key", "sale-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CreateManualSaleRequest(new BigDecimal("125.00"), "Venta mostrador")
+                                new CreateManualSaleRequest(
+                                        List.of(new CreateManualSaleItemRequest(10, 5)),
+                                        "Venta mostrador"
+                                )
                         )))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("OK")))
                 .andExpect(jsonPath("$.data.fuente", is("manual_fonda")))
                 .andExpect(jsonPath("$.data.pedidoId").doesNotExist())
-                .andExpect(jsonPath("$.data.total", is(125.00)));
+                .andExpect(jsonPath("$.data.total", is(125.00)))
+                .andExpect(jsonPath("$.data.items[0].menuItemId", is(10)))
+                .andExpect(jsonPath("$.data.items[0].precioUnitario", is(25.00)));
     }
 
     @Test
@@ -142,14 +151,70 @@ class AdminSalesControllerTest {
     }
 
     @Test
-    void validatesPositiveManualSaleTotal() throws Exception {
+    void validatesPositiveManualSaleQuantity() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/sales/manual")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .header("Idempotency-Key", "sale-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new CreateManualSaleRequest(
+                                        List.of(new CreateManualSaleItemRequest(10, 0)),
+                                        null
+                                )
+                        )))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void rejectsManualSaleWithoutIdempotencyKey() throws Exception {
+        AuthenticatedUser encargada = encargada();
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(createManualSalePort.create(
+                eq((String) null),
+                any(CreateManualSaleRequest.class),
+                eq(encargada)
+        )).thenThrow(new SaleValidationException("El header Idempotency-Key es obligatorio."));
+
         mockMvc.perform(post("/api/v1/admin/sales/manual")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new CreateManualSaleRequest(BigDecimal.ZERO, null)
-                        )))
+                        .content("""
+                                {"items":[{"menuItemId":10,"cantidad":1}]}
+                                """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void rejectsClientProvidedTotal() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/sales/manual")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .header("Idempotency-Key", "sale-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "items": [{"menuItemId": 10, "cantidad": 1}],
+                                  "observaciones": "mostrador",
+                                  "total": 0.01
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is("ERROR")));
+    }
+
+    @Test
+    void returnsUnauthorizedWhenCreatingManualSaleWithoutToken() throws Exception {
+        when(authenticateBearerTokenPort.authenticate(null))
+                .thenThrow(new UnauthorizedException("Token de autenticacion requerido."));
+
+        mockMvc.perform(post("/api/v1/admin/sales/manual")
+                        .header("Idempotency-Key", "sale-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"menuItemId":10,"cantidad":1}]}
+                                """))
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is("ERROR")));
     }
 
@@ -171,7 +236,16 @@ class AdminSalesControllerTest {
                 null,
                 null,
                 null,
-                LocalDateTime.of(2026, 7, 11, 12, 0)
+                LocalDateTime.of(2026, 7, 11, 12, 0),
+                List.of(new SaleItemResponse(
+                        30,
+                        10,
+                        110,
+                        "Platillo 10",
+                        5,
+                        new BigDecimal("25.00"),
+                        new BigDecimal("125.00")
+                ))
         );
     }
 

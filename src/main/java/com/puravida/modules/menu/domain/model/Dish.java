@@ -9,6 +9,7 @@ public record Dish(
         String descripcion,
         String tipoPlatillo,
         BigDecimal precioBase,
+        String imagenKey,
         boolean activo,
         LocalDateTime creadoEn,
         LocalDateTime actualizadoEn
@@ -26,6 +27,7 @@ public record Dish(
                 descripcion,
                 tipoPlatillo,
                 precioBase,
+                null,
                 true,
                 LocalDateTime.now(),
                 null
@@ -39,7 +41,41 @@ public record Dish(
                 descripcion,
                 tipoPlatillo,
                 precioBase,
+                imagenKey,
                 false,
+                creadoEn,
+                LocalDateTime.now()
+        );
+    }
+
+    public Dish updateDetails(
+            String nombre,
+            String descripcion,
+            String tipoPlatillo,
+            BigDecimal precioBase
+    ) {
+        return new Dish(
+                id,
+                nombre,
+                descripcion,
+                tipoPlatillo,
+                precioBase,
+                imagenKey,
+                activo,
+                creadoEn,
+                LocalDateTime.now()
+        );
+    }
+
+    public Dish updateImage(String imagenKey) {
+        return new Dish(
+                id,
+                nombre,
+                descripcion,
+                tipoPlatillo,
+                precioBase,
+                imagenKey,
+                activo,
                 creadoEn,
                 LocalDateTime.now()
         );

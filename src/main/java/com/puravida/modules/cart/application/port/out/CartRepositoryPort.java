@@ -12,6 +12,8 @@ public interface CartRepositoryPort {
 
     Optional<CartItem> findById(Integer cartItemId);
 
+    Optional<CartItem> findByIdAndUserId(Integer cartItemId, Integer userId);
+
     Optional<CartItem> findByUserIdAndDishId(Integer userId, Integer dishId);
 
     CartItem save(CartItem cartItem);

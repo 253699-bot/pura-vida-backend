@@ -50,15 +50,15 @@ public class UpdateTodayMenuUseCase implements UpdateTodayMenuPort {
                 .toList();
 
         LocalDate today = LocalDate.now();
-        return TodayMenuResponse.configured(
-                today,
-                dailyMenuRepositoryPort.replaceForDate(today, dishes, actor.id())
-        );
+        var savedItems = dailyMenuRepositoryPort.replaceForDate(today, dishes, actor.id());
+        return savedItems.isEmpty()
+                ? TodayMenuResponse.notConfigured(today)
+                : TodayMenuResponse.configured(today, savedItems);
     }
 
     private List<Integer> validateAndExtractDishIds(UpdateTodayMenuRequest request) {
-        if (request.items() == null || request.items().isEmpty()) {
-            throw new MenuValidationException("El menu debe incluir al menos un platillo.");
+        if (request == null || request.items() == null) {
+            throw new MenuValidationException("La lista de platillos del menu es obligatoria.");
         }
 
         HashSet<Integer> seen = new HashSet<>();

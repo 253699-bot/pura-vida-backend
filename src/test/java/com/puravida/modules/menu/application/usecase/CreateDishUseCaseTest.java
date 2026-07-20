@@ -46,6 +46,7 @@ class CreateDishUseCaseTest {
                     dish.descripcion(),
                     dish.tipoPlatillo(),
                     dish.precioBase(),
+                    dish.imagenKey(),
                     dish.activo(),
                     LocalDateTime.of(2026, 7, 12, 10, 0),
                     null

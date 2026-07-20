@@ -37,6 +37,9 @@ public class BusinessDayStatusEntity {
     @Column(name = "Actualizado_en")
     private LocalDateTime actualizadoEn;
 
+    @Column(name = "Ciclo_iniciado_en")
+    private LocalDateTime cicloIniciadoEn;
+
     protected BusinessDayStatusEntity() {
     }
 
@@ -47,7 +50,8 @@ public class BusinessDayStatusEntity {
             String motivoCierre,
             Integer registradoPor,
             LocalDateTime creadoEn,
-            LocalDateTime actualizadoEn
+            LocalDateTime actualizadoEn,
+            LocalDateTime cicloIniciadoEn
     ) {
         this.id = id;
         this.fecha = fecha;
@@ -56,6 +60,7 @@ public class BusinessDayStatusEntity {
         this.registradoPor = registradoPor;
         this.creadoEn = creadoEn;
         this.actualizadoEn = actualizadoEn;
+        this.cicloIniciadoEn = cicloIniciadoEn;
     }
 
     public static BusinessDayStatusEntity fromDomain(BusinessDayStatus status) {
@@ -66,7 +71,8 @@ public class BusinessDayStatusEntity {
                 status.motivoCierre(),
                 status.registradoPor(),
                 status.creadoEn(),
-                status.actualizadoEn()
+                status.actualizadoEn(),
+                status.cicloIniciadoEn()
         );
     }
 
@@ -78,7 +84,8 @@ public class BusinessDayStatusEntity {
                 motivoCierre,
                 registradoPor,
                 creadoEn,
-                actualizadoEn
+                actualizadoEn,
+                cicloIniciadoEn
         );
     }
 }

@@ -31,6 +31,9 @@ public class DishEntity {
     @Column(name = "Precio_base", nullable = false, precision = 8, scale = 2)
     private BigDecimal precioBase;
 
+    @Column(name = "Imagen_url", columnDefinition = "TEXT")
+    private String imagenKey;
+
     @Column(name = "Activo", nullable = false)
     private boolean activo;
 
@@ -49,6 +52,7 @@ public class DishEntity {
             String descripcion,
             String tipoPlatillo,
             BigDecimal precioBase,
+            String imagenKey,
             boolean activo,
             LocalDateTime creadoEn,
             LocalDateTime actualizadoEn
@@ -58,6 +62,7 @@ public class DishEntity {
         this.descripcion = descripcion;
         this.tipoPlatillo = tipoPlatillo;
         this.precioBase = precioBase;
+        this.imagenKey = imagenKey;
         this.activo = activo;
         this.creadoEn = creadoEn;
         this.actualizadoEn = actualizadoEn;
@@ -70,6 +75,7 @@ public class DishEntity {
                 dish.descripcion(),
                 dish.tipoPlatillo(),
                 dish.precioBase(),
+                dish.imagenKey(),
                 dish.activo(),
                 dish.creadoEn(),
                 dish.actualizadoEn()
@@ -83,6 +89,7 @@ public class DishEntity {
                 descripcion,
                 tipoPlatillo,
                 precioBase,
+                imagenKey,
                 activo,
                 creadoEn,
                 actualizadoEn
