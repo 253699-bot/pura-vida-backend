@@ -124,14 +124,40 @@ class DailyMenuRepositoryAdapterTest {
                 currentDish.creadoEn(),
                 java.time.LocalDateTime.now()
         );
-        var entity = DailyMenuEntity.newItem(today, currentDish, 2);
-        when(dailyMenuJpaRepository.findByFechaAndDishIdAndPublicadoTrueOrderByIdAsc(today, updatedDish.id()))
-                .thenReturn(List.of(entity));
+        when(dailyMenuJpaRepository.updatePrecioDiaByFechaAndDishIdAndPublicadoTrue(
+                today,
+                updatedDish.id(),
+                updatedDish.precioBase()
+        )).thenReturn(1);
 
-        adapter.updatePublishedDishForDate(today, updatedDish);
+        int affectedRows = adapter.updatePublishedDishForDate(today, updatedDish);
 
-        assertThat(entity.precioDia()).isEqualByComparingTo(price);
-        verify(dailyMenuJpaRepository).saveAll(List.of(entity));
+        assertThat(affectedRows).isEqualTo(1);
+        verify(dailyMenuJpaRepository).updatePrecioDiaByFechaAndDishIdAndPublicadoTrue(
+                today,
+                updatedDish.id(),
+                updatedDish.precioBase()
+        );
+    }
+
+    @Test
+    void returnsZeroWhenDishIsNotPublishedForRequestedDate() {
+        LocalDate today = LocalDate.now();
+        var updatedDish = testDish().updateDetails(
+                "Tacos",
+                "Orden de tacos",
+                "platillo_fuerte",
+                new java.math.BigDecimal("35.00")
+        );
+        when(dailyMenuJpaRepository.updatePrecioDiaByFechaAndDishIdAndPublicadoTrue(
+                today,
+                updatedDish.id(),
+                updatedDish.precioBase()
+        )).thenReturn(0);
+
+        int affectedRows = adapter.updatePublishedDishForDate(today, updatedDish);
+
+        assertThat(affectedRows).isZero();
     }
 
     private com.puravida.modules.menu.domain.model.Dish testDish() {

@@ -14,7 +14,7 @@ public interface DailyMenuRepositoryPort {
 
     List<DailyMenuItem> replaceForDate(LocalDate fecha, List<Dish> dishes, Integer creadoPor);
 
-    void updatePublishedDishForDate(LocalDate fecha, Dish dish);
+    int updatePublishedDishForDate(LocalDate fecha, Dish dish);
 
     DailyMenuItem updateAvailability(Integer menuItemId, boolean disponible);
 }

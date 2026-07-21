@@ -79,15 +79,12 @@ public class DailyMenuRepositoryAdapter implements DailyMenuRepositoryPort {
     }
 
     @Override
-    public void updatePublishedDishForDate(LocalDate fecha, Dish dish) {
-        List<DailyMenuEntity> publishedItems = dailyMenuJpaRepository
-                .findByFechaAndDishIdAndPublicadoTrueOrderByIdAsc(fecha, dish.id());
-        if (publishedItems.isEmpty()) {
-            return;
-        }
-
-        publishedItems.forEach(item -> item.updateDailyPrice(dish));
-        dailyMenuJpaRepository.saveAll(publishedItems);
+    public int updatePublishedDishForDate(LocalDate fecha, Dish dish) {
+        return dailyMenuJpaRepository.updatePrecioDiaByFechaAndDishIdAndPublicadoTrue(
+                fecha,
+                dish.id(),
+                dish.precioBase()
+        );
     }
 
     @Override
