@@ -100,6 +100,10 @@ public class DailyMenuEntity {
         this.publicado = true;
     }
 
+    public void updateDailyPrice(Dish dish) {
+        this.precioDia = dish.precioBase();
+    }
+
     public void unpublish() {
         this.publicado = false;
     }

@@ -79,6 +79,18 @@ public class DailyMenuRepositoryAdapter implements DailyMenuRepositoryPort {
     }
 
     @Override
+    public void updatePublishedDishForDate(LocalDate fecha, Dish dish) {
+        List<DailyMenuEntity> publishedItems = dailyMenuJpaRepository
+                .findByFechaAndDishIdAndPublicadoTrueOrderByIdAsc(fecha, dish.id());
+        if (publishedItems.isEmpty()) {
+            return;
+        }
+
+        publishedItems.forEach(item -> item.updateDailyPrice(dish));
+        dailyMenuJpaRepository.saveAll(publishedItems);
+    }
+
+    @Override
     public DailyMenuItem updateAvailability(Integer menuItemId, boolean disponible) {
         MenuAvailabilityEntity availability = availabilityJpaRepository.findByMenuId(menuItemId)
                 .orElseGet(() -> MenuAvailabilityEntity.available(menuItemId));

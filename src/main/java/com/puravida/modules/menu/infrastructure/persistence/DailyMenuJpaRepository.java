@@ -9,4 +9,6 @@ public interface DailyMenuJpaRepository extends JpaRepository<DailyMenuEntity, I
     List<DailyMenuEntity> findByFechaOrderByIdAsc(LocalDate fecha);
 
     List<DailyMenuEntity> findByFechaAndPublicadoTrueOrderByIdAsc(LocalDate fecha);
+
+    List<DailyMenuEntity> findByFechaAndDishIdAndPublicadoTrueOrderByIdAsc(LocalDate fecha, Integer dishId);
 }

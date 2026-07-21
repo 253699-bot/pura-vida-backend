@@ -4,10 +4,12 @@ import com.puravida.modules.auth.application.dto.AuthenticatedUser;
 import com.puravida.modules.menu.application.dto.CreateDishRequest;
 import com.puravida.modules.menu.application.dto.DishResponse;
 import com.puravida.modules.menu.application.port.in.UpdateDishPort;
+import com.puravida.modules.menu.application.port.out.DailyMenuRepositoryPort;
 import com.puravida.modules.menu.application.port.out.DishRepositoryPort;
 import com.puravida.modules.menu.domain.model.Dish;
 import com.puravida.shared.domain.exception.ConflictException;
 import com.puravida.shared.domain.exception.NotFoundException;
+import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,13 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdateDishUseCase implements UpdateDishPort {
 
     private final DishRepositoryPort dishRepositoryPort;
+    private final DailyMenuRepositoryPort dailyMenuRepositoryPort;
     private final MenuAuthorizationService authorizationService;
 
     public UpdateDishUseCase(
             DishRepositoryPort dishRepositoryPort,
+            DailyMenuRepositoryPort dailyMenuRepositoryPort,
             MenuAuthorizationService authorizationService
     ) {
         this.dishRepositoryPort = dishRepositoryPort;
+        this.dailyMenuRepositoryPort = dailyMenuRepositoryPort;
         this.authorizationService = authorizationService;
     }
 
@@ -45,7 +50,9 @@ public class UpdateDishUseCase implements UpdateDishPort {
                 request.tipoPlatillo().trim(),
                 request.precioBase()
         );
-        return DishResponse.from(dishRepositoryPort.save(updated));
+        Dish savedDish = dishRepositoryPort.save(updated);
+        dailyMenuRepositoryPort.updatePublishedDishForDate(LocalDate.now(), savedDish);
+        return DishResponse.from(savedDish);
     }
 
     private String normalizeNullable(String value) {

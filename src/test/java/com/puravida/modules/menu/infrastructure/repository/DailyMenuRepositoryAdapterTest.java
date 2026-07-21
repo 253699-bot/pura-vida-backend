@@ -15,6 +15,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -104,6 +106,32 @@ class DailyMenuRepositoryAdapterTest {
         assertThat(result).singleElement().satisfies(item ->
                 assertThat(item.precioDia()).isEqualByComparingTo("65.00")
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"20.00", "80.00", "20.50", "79.99"})
+    void updatesPublishedDishPriceForRequestedDate(String price) {
+        LocalDate today = LocalDate.now();
+        var currentDish = testDish();
+        var updatedDish = new com.puravida.modules.menu.domain.model.Dish(
+                currentDish.id(),
+                currentDish.nombre(),
+                currentDish.descripcion(),
+                currentDish.tipoPlatillo(),
+                new java.math.BigDecimal(price),
+                currentDish.imagenKey(),
+                true,
+                currentDish.creadoEn(),
+                java.time.LocalDateTime.now()
+        );
+        var entity = DailyMenuEntity.newItem(today, currentDish, 2);
+        when(dailyMenuJpaRepository.findByFechaAndDishIdAndPublicadoTrueOrderByIdAsc(today, updatedDish.id()))
+                .thenReturn(List.of(entity));
+
+        adapter.updatePublishedDishForDate(today, updatedDish);
+
+        assertThat(entity.precioDia()).isEqualByComparingTo(price);
+        verify(dailyMenuJpaRepository).saveAll(List.of(entity));
     }
 
     private com.puravida.modules.menu.domain.model.Dish testDish() {

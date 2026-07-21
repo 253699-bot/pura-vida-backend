@@ -1,8 +1,10 @@
 package com.puravida.modules.menu.web.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -31,6 +33,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -153,6 +158,33 @@ class AdminDishControllerTest {
                 .andExpect(jsonPath("$.data.nombre", is("Comida corrida")));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"20.00", "80.00", "20.50", "79.99"})
+    void updateAcceptsExactDecimalStringPrice(String price) throws Exception {
+        AuthenticatedUser encargada = encargada();
+        ArgumentCaptor<CreateDishRequest> request = ArgumentCaptor.forClass(CreateDishRequest.class);
+        when(authenticateBearerTokenPort.authenticate("Bearer admin-token")).thenReturn(encargada);
+        when(updateDishPort.update(eq(12), any(CreateDishRequest.class), eq(encargada)))
+                .thenReturn(dishResponseWithPrice(price));
+
+        mockMvc.perform(put("/api/v1/admin/dishes/12")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Comida corrida",
+                                  "descripcion": "Incluye sopa y guisado.",
+                                  "tipoPlatillo": "platillo_fuerte",
+                                  "precioBase": "%s"
+                                }
+                                """.formatted(price)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("OK")));
+
+        verify(updateDishPort).update(eq(12), request.capture(), eq(encargada));
+        assertThat(request.getValue().precioBase()).isEqualByComparingTo(price);
+    }
+
     @Test
     void updateRejectsPriceOutsideDatabaseScale() throws Exception {
         mockMvc.perform(put("/api/v1/admin/dishes/12")
@@ -261,6 +293,21 @@ class AdminDishControllerTest {
                 true,
                 LocalDateTime.of(2026, 7, 12, 10, 0),
                 null
+        );
+    }
+
+    private DishResponse dishResponseWithPrice(String price) {
+        DishResponse dish = dishResponse();
+        return new DishResponse(
+                dish.id(),
+                dish.nombre(),
+                dish.descripcion(),
+                dish.tipoPlatillo(),
+                new BigDecimal(price),
+                dish.imagenUrl(),
+                dish.activo(),
+                dish.creadoEn(),
+                dish.actualizadoEn()
         );
     }
 
