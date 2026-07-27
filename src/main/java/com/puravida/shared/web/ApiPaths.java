@@ -1,3 +1,4 @@
+// Prefijo común para los endpoints versionados de la API.
 package com.puravida.shared.web;
 
 public final class ApiPaths {

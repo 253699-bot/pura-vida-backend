@@ -1,5 +1,7 @@
 package com.puravida;
 
+// Inicia el contexto principal de Spring Boot.
+
 import com.puravida.shared.config.CorsConfig;
 import com.puravida.shared.config.SecurityConfig;
 import org.springframework.boot.SpringApplication;
