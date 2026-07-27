@@ -1,3 +1,4 @@
+// Construye una respuesta uniforme para errores de validación.
 package com.puravida.shared.web.response;
 
 import java.util.Map;
