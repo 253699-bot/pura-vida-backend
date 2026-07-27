@@ -1,3 +1,4 @@
+// Crea una respuesta exitosa con el formato estándar.
 package com.puravida.shared.web.response;
 
 public record ApiResponse<T>(String status, T data) {
